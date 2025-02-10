@@ -1,27 +1,20 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import { resolve } from 'path'
+import svgLoader from 'vite-svg-loader'
 
 export default defineConfig({
   plugins: [
     vue(),
-    AutoImport({
-      resolvers: [ElementPlusResolver()],
-    }),
-    Components({
-      resolvers: [ElementPlusResolver()],
-    }),
+    svgLoader()
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src')
     }
   },
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
