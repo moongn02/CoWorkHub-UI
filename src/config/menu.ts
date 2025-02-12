@@ -17,7 +17,7 @@ export const menuList: MenuItem[] = [
         path: '/home',
         title: '我的视图',
         icon: 'House',
-        component: 'views/dashboard/index',
+        component: 'home/index',
         meta: {
             title: '我的视图',
             keepAlive: true
@@ -27,7 +27,7 @@ export const menuList: MenuItem[] = [
         path: '/task',
         title: '创建任务',
         icon: 'Plus',
-        component: 'views/task/create',
+        component: 'task/create',
         meta: {
             title: '创建任务'
         }
@@ -36,7 +36,7 @@ export const menuList: MenuItem[] = [
         path: '/task/search',
         title: '搜索任务',
         icon: 'Search',
-        component: 'views/task/search',
+        component: 'task/search',
         meta: {
             title: '搜索任务'
         }
@@ -49,7 +49,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/issue/create',
                 title: '创建问题',
-                component: 'views/issue/create',
+                component: 'issue/create',
                 meta: {
                     title: '创建问题'
                 }
@@ -57,7 +57,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/issue/search',
                 title: '搜索问题',
-                component: 'views/issue/search',
+                component: 'issue/search',
                 meta: {
                     title: '搜索问题'
                 }
@@ -70,19 +70,27 @@ export const menuList: MenuItem[] = [
         icon: 'Operation',
         children: [
             {
-                path: '/operation/worktime',
+                path: '/operation/work-time',
                 title: '查看个人工时',
-                component: 'views/operation/worktime',
+                component: 'operation/work-time',
                 meta: {
                     title: '查看个人工时'
                 }
             },
             {
-                path: '/operation/profile',
-                title: '编辑个人信息',
-                component: 'views/operation/profile',
+                path: '/operation/individual-center',
+                title: '个人中心',
+                component: 'my-operation/individual-center',
                 meta: {
-                    title: '编辑个人信息'
+                    title: '个人中心'
+                }
+            },
+            {
+                path: '/operation/work-memo',
+                title: '工作备忘',
+                component: 'my-operation/work-memo',
+                meta: {
+                    title: '工作备忘'
                 }
             }
         ]
@@ -91,7 +99,7 @@ export const menuList: MenuItem[] = [
         path: '/worklog',
         title: '工作日志',
         icon: 'Document',
-        component: 'views/worklog/index',
+        component: 'worklog/index',
         meta: {
             title: '工作日志'
         }
@@ -104,7 +112,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/team/worktime',
                 title: '查看团队工时',
-                component: 'views/team/worktime',
+                component: 'team/worktime',
                 meta: {
                     title: '查看团队工时'
                 }
@@ -112,7 +120,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/team/log',
                 title: '查看团队日志',
-                component: 'views/team/log',
+                component: 'team/log',
                 meta: {
                     title: '查看团队日志'
                 }
@@ -120,7 +128,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/team/member',
                 title: '成员管理',
-                component: 'views/team/member',
+                component: 'team/member',
                 meta: {
                     title: '成员管理'
                 }
@@ -135,7 +143,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/settings/project',
                 title: '项目管理',
-                component: 'views/settings/project',
+                component: 'settings/project',
                 meta: {
                     title: '项目管理'
                 }
@@ -143,7 +151,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/settings/department',
                 title: '部门管理',
-                component: 'views/settings/department',
+                component: 'settings/department',
                 meta: {
                     title: '部门管理'
                 }
@@ -151,7 +159,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/settings/permission',
                 title: '权限管理',
-                component: 'views/settings/permission',
+                component: 'settings/permission',
                 meta: {
                     title: '权限管理'
                 }
@@ -159,7 +167,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/settings/schedule',
                 title: '定时管理',
-                component: 'views/settings/schedule',
+                component: 'settings/schedule',
                 meta: {
                     title: '定时管理'
                 }
@@ -174,7 +182,7 @@ export const menuList: MenuItem[] = [
             {
                 path: '/other/cache',
                 title: '刷新缓存',
-                component: 'views/other/cache',
+                component: 'other/cache',
                 meta: {
                     title: '刷新缓存'
                 }
