@@ -24,7 +24,7 @@ export const menuList: MenuItem[] = [
         }
     },
     {
-        path: '/task',
+        path: '/task/create',
         title: '创建任务',
         icon: 'Plus',
         component: 'task/create',
