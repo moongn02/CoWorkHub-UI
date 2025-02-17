@@ -17,7 +17,7 @@
               class="task-form"
           >
             <!-- 基本信息 -->
-            <div class="form-section">
+            <div>
               <el-row :gutter="20">
                 <el-col :span="12">
                   <el-form-item label="目标工作室" prop="workspace" required>
@@ -77,7 +77,7 @@
             </div>
 
             <!-- 任务信息 -->
-            <div class="form-section">
+            <div>
               <el-form-item label="任务标题" prop="title" required>
                 <el-input v-model="taskForm.title" placeholder="请输入" class="white-bg-input" />
               </el-form-item>
@@ -203,7 +203,6 @@ const resetForm = () => {
 <style scoped>
 .create-task-container {
   padding: 20px;
-  height: 100%;
 }
 
 .task-card {
@@ -234,10 +233,6 @@ const resetForm = () => {
 
 .task-form {
   padding: 20px;
-}
-
-.form-section {
-  margin-bottom: 20px;
 }
 
 .button-container {

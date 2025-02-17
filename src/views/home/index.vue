@@ -97,7 +97,6 @@ const issueList = ref([
 
 <style scoped>
 .main-content {
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 20px;
