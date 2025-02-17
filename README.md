@@ -27,3 +27,8 @@ npm run dev
 ```sh
 npm run build
 ```
+### Install rich text editor dependencies
+
+```sh
+npm install @vueup/vue-quill
+```
