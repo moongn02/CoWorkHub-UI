@@ -13,7 +13,10 @@
           <div class="memo-content" ref="memoContentRef">
             <div class="memo-grid" :style="gridStyle">
               <div v-for="(memo, index) in memos" :key="index" class="memo-item">
-                <h4>{{ memo.title }}</h4>
+                <h4>
+                  {{ memo.title }}
+                  <el-button type="text" icon="View" @click="viewMemoDetail(memo)" class="view-detail-btn"></el-button>
+                </h4>
                 <p>{{ memo.content }}</p>
                 <div class="memo-footer">
                   <span>{{ memo.date }}</span>
@@ -34,8 +37,10 @@
   <el-dialog
       v-model="showMemoDialog"
       :title="isEditing ? '编辑备忘' : '添加备忘'"
-      width="50%"
+      width="600px"
       destroy-on-close
+      :modal-append-to-body="false"
+      class="custom-dialog"
   >
     <el-form
         ref="memoFormRef"
@@ -52,6 +57,7 @@
             type="textarea"
             :rows="4"
             placeholder="请输入内容"
+            class="save-content"
         />
       </el-form-item>
       <el-form-item label="日期" prop="date">
@@ -71,20 +77,48 @@
       </span>
     </template>
   </el-dialog>
+
+  <!-- 查看详情对话框 -->
+  <el-dialog
+      v-model="showDetailDialog"
+      title="备忘详情"
+      width="600px"
+      destroy-on-close
+      :modal-append-to-body="false"
+      class="custom-dialog"
+      center
+  >
+    <div class="detail-content">
+      <h4>{{ detailMemo.title }}</h4>
+      <p class="detail-date"><strong>日期：</strong>{{ detailMemo.date }}</p>
+      <p class="detail-text"><strong>内容：</strong>{{ detailMemo.content }}</p>
+    </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showDetailDialog = false">关闭</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import Layout from '@/components/Layout.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const showMemoDialog = ref(false)
-const showAddMemoDialog = ref(false)
+const showDetailDialog = ref(false)
 const memoFormRef = ref<FormInstance>()
 const memoContentRef = ref<HTMLElement | null>(null)
 const isEditing = ref(false)
 const editingIndex = ref(-1)
+const detailMemo = reactive({
+  title: '',
+  date: '',
+  content: ''
+})
+
 const handleAddMemo = () => {
   isEditing.value = false
   resetMemoForm()
@@ -161,6 +195,12 @@ const editMemo = (memo: any) => {
   showMemoDialog.value = true
 }
 
+// 查看备忘录详情
+const viewMemoDetail = (memo: any) => {
+  Object.assign(detailMemo, memo)
+  showDetailDialog.value = true
+}
+
 // 删除备忘录
 const deleteMemo = (index: number) => {
   ElMessageBox.confirm('确定要删除这条备忘录吗？', '提示', {
@@ -184,23 +224,6 @@ const resetMemoForm = () => {
   editingIndex.value = -1
 }
 
-// 监听添加备忘对话框的显示
-watch(showAddMemoDialog, (newVal) => {
-  if (newVal) {
-    showMemoDialog.value = true
-    resetMemoForm()
-  }
-})
-
-// 监听备忘录数量变化，调整滚动条
-watch(() => memos.value.length, () => {
-  nextTick(() => {
-    if (memoContentRef.value) {
-      memoContentRef.value.scrollTop = memoContentRef.value.scrollHeight
-    }
-  })
-})
-
 // 组件挂载后初始化滚动条
 onMounted(() => {
   if (memoContentRef.value) {
@@ -213,7 +236,6 @@ onMounted(() => {
 <style scoped>
 .work-memo-container {
   padding: 20px;
-  height: 100%;
 }
 
 .memo-card {
@@ -240,12 +262,11 @@ onMounted(() => {
 }
 
 .memo-content {
-  margin-top: 20px;
   padding-right: 5px;
 }
 
 .memo-item {
-  background-color: #e3f3ff; /* Light blue background */
+  background-color: #e3f3ff;
   border-radius: 8px;
   padding: 15px;
   display: flex;
@@ -282,6 +303,40 @@ onMounted(() => {
   color: #909399;
 }
 
+.save-content{
+  resize: vertical;
+  height: 250px;
+}
+
+:deep(.save-content) {
+  .el-textarea__inner {
+    height: 250px;
+    resize: both;
+  }
+}
+
+.detail-content {
+  padding: 0 20px;
+}
+
+.detail-content h4 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.detail-date {
+  margin-bottom: 12px;
+  color: #606266;
+}
+
+.detail-text {
+  color: #606266;
+  line-height: 1.6;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
 /* 响应式调整 */
 @media screen and (max-width: 768px) {
   .work-memo-container {
@@ -294,6 +349,12 @@ onMounted(() => {
 
   .memo-grid {
     grid-template-columns: 1fr !important;
+  }
+
+  :deep(.custom-dialog) {
+    .el-dialog {
+      width: 90% !important;
+    }
   }
 }
 
@@ -309,7 +370,7 @@ onMounted(() => {
   }
 
   .memo-item {
-    background-color: #1c3a5e; /* Darker blue for dark theme */
+    background-color: #1c3a5e;
   }
 
   .memo-item h4 {
@@ -324,39 +385,10 @@ onMounted(() => {
     color: #909399;
   }
 
-  :deep(.el-button) {
-    background-color: #4a4a4a;
-    border-color: #4a4a4a;
+  .detail-content h4,
+  .detail-date,
+  .detail-text {
     color: #e5e7eb;
-  }
-
-  :deep(.el-button--primary) {
-    background-color: #409eff;
-    border-color: #409eff;
-    color: #ffffff;
-  }
-
-  :deep(.el-button--danger) {
-    background-color: #f56c6c;
-    border-color: #f56c6c;
-    color: #ffffff;
-  }
-  :deep(.el-button.is-circle) {
-    background-color: #4a4a4a;
-    border-color: #4a4a4a;
-    color: #e5e7eb;
-  }
-
-  :deep(.el-button--primary.is-circle) {
-    background-color: #409eff;
-    border-color: #409eff;
-    color: #ffffff;
-  }
-
-  :deep(.el-button--danger.is-circle) {
-    background-color: #f56c6c;
-    border-color: #f56c6c;
-    color: #ffffff;
   }
 }
 </style>
