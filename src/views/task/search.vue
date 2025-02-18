@@ -2,7 +2,7 @@
   <Layout>
     <template #content>
       <div class="search-task-container">
-        <el-card class="search-card">
+        <el-card class="search-card" shadow="hover">
           <template #header>
             <h3 class="card-title">搜索任务</h3>
           </template>
