@@ -96,10 +96,10 @@ export const menuList: MenuItem[] = [
         ]
     },
     {
-        path: '/worklog',
+        path: '/work-log',
         title: '工作日志',
         icon: 'Document',
-        component: 'worklog/index',
+        component: 'work-log/index',
         meta: {
             title: '工作日志'
         }
