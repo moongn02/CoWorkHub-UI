@@ -96,6 +96,11 @@
               <el-table-column prop="project" label="项目" width="120" />
               <el-table-column prop="executor" label="执行人" width="120" />
               <el-table-column prop="tester" label="测试人员" width="120" />
+              <el-table-column prop="status" label="状态" width="100">
+                <template #default="scope">
+                  <el-tag :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
+                </template>
+              </el-table-column>
               <el-table-column prop="expectedCompletionTime" label="期望完成时间" width="180" />
               <el-table-column prop="title" label="问题标题" min-width="200" />
               <el-table-column label="操作" width="100" fixed="right">
@@ -144,9 +149,9 @@ const searchForm = reactive({
 })
 
 const searchResults = ref([
-  { questionId: 'Q001', department: '研发部', project: '项目A', title: '登录功能异常', executor: '张三', tester: '李四', expectedCompletionTime: '2025-03-15 18:00:00' },
-  { questionId: 'Q002', department: '市场部', project: '项目B', title: '页面加载缓慢', executor: '王五', tester: '赵六', expectedCompletionTime: '2025-03-10 12:00:00' },
-  { questionId: 'Q003', department: '研发部', project: '项目A', title: 'UI样式错误', executor: '刘七', tester: '孙八', expectedCompletionTime: '2025-03-20 18:00:00' },
+  { questionId: 'Q001', department: '研发部', project: '项目A', title: '登录功能异常', executor: '张三', tester: '李四', status: 'in_progress', expectedCompletionTime: '2025-03-15 18:00:00' },
+  { questionId: 'Q002', department: '市场部', project: '项目B', title: '页面加载缓慢', executor: '王五', tester: '赵六', status: 'completed', expectedCompletionTime: '2025-03-10 12:00:00' },
+  { questionId: 'Q003', department: '研发部', project: '项目A', title: 'UI样式错误', executor: '刘七', tester: '孙八', status: 'in_progress', expectedCompletionTime: '2025-03-20 18:00:00' },
 ])
 
 const loading = ref(false)
@@ -186,6 +191,24 @@ const handleCurrentChange = (val: number) => {
 const handleSizeChange = (val: number) => {
   pageSize.value = val
   handleSearch()
+}
+
+const getStatusType = (status: string) => {
+  const types = {
+    in_progress: 'warning',
+    completed: 'success',
+    cancelled: 'danger'
+  }
+  return types[status] || 'info'
+}
+
+const getStatusLabel = (status: string) => {
+  const labels = {
+    in_progress: '处理中',
+    completed: '已解决',
+    cancelled: '已关闭'
+  }
+  return labels[status] || '未知'
 }
 </script>
 
