@@ -83,7 +83,7 @@
               </template>
               <el-timeline>
                 <el-timeline-item
-                    v-for="log in filteredLogs"
+                    v-for="log in paginatedLogs"
                     :key="log.id"
                     :timestamp="log.date"
                     placement="top"
@@ -174,7 +174,6 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { Search } from '@element-plus/icons-vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -202,11 +201,24 @@ const logs = ref([
 
 const currentPage = ref(1)
 const pageSize = ref(5)
-const total = ref(20)
-const selectedDate = ref(new Date())
+const total = computed(() => filteredLogs.value.length)
 const searchKeyword = ref('')
 const addLogDialogVisible = ref(false)
-const lang = 'zh'
+
+const paginatedLogs = computed(() => {
+  const startIndex = (currentPage.value - 1) * pageSize.value
+  const endIndex = startIndex + pageSize.value
+  return filteredLogs.value.slice(startIndex, endIndex)
+})
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+}
 
 const filteredLogs = computed(() => {
   return logs.value.filter((log) => {
@@ -282,20 +294,6 @@ const deleteLog = (log) => {
       .catch(() => {
         // 取消删除操作
       })
-}
-
-const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  // 在实际应用中，这里应该重新加载日志数据
-}
-
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-  // 在实际应用中，这里应该重新加载日志数据
-}
-
-const handleSearch = () => {
-  // 在实际应用中，这里应该调用API来搜索日志
 }
 
 const getTimelineItemType = (project: string) => {
