@@ -70,14 +70,6 @@ export const menuList: MenuItem[] = [
         icon: 'Operation',
         children: [
             {
-                path: '/operation/work-time',
-                title: '查看个人工时',
-                component: 'operation/work-time',
-                meta: {
-                    title: '查看个人工时'
-                }
-            },
-            {
                 path: '/operation/individual-center',
                 title: '个人中心',
                 component: 'my-operation/individual-center',
@@ -92,48 +84,26 @@ export const menuList: MenuItem[] = [
                 meta: {
                     title: '工作备忘'
                 }
-            }
+            },
+            {
+                path: '/operation/work-log',
+                title: '工作日志',
+                icon: 'Document',
+                component: 'my-operation/work-log',
+                meta: {
+                    title: '工作日志'
+                }
+            },
         ]
     },
     {
-        path: '/work-log',
-        title: '工作日志',
-        icon: 'Document',
-        component: 'work-log/index',
-        meta: {
-            title: '工作日志'
-        }
-    },
-    {
-        path: '/team',
+        path: '/my-team',
         title: '我的团队',
         icon: 'User',
-        children: [
-            {
-                path: '/team/worktime',
-                title: '查看团队工时',
-                component: 'team/worktime',
-                meta: {
-                    title: '查看团队工时'
-                }
-            },
-            {
-                path: '/team/log',
-                title: '查看团队日志',
-                component: 'team/log',
-                meta: {
-                    title: '查看团队日志'
-                }
-            },
-            {
-                path: '/team/member',
-                title: '成员管理',
-                component: 'team/member',
-                meta: {
-                    title: '成员管理'
-                }
-            }
-        ]
+        component: 'my-team/index',
+        meta: {
+            title: '我的团队'
+        }
     },
     {
         path: '/settings',
