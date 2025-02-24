@@ -1,6 +1,10 @@
 <template>
   <Layout>
     <template #content>
+      <!-- 宠物容器 -->
+      <div class="pet-container" ref="petContainer" v-if="showPet">
+        <img ref="petRef" @click="debounce(attckPet, 150)()" class="pet" :src="pet.src" alt="" srcset="">
+      </div>
       <div class="main-content">
         <!-- 任务单和问题单行 -->
         <el-row :gutter="20" class="content-row-1">
@@ -67,14 +71,41 @@
                 </div>
               </template>
               <div class="dashboard-content">
+                <!-- 状态模块 -->
+                <el-row :gutter="20" class="stats-section">
+                  <el-col :span="20">
+                    <div class="stat-card today-stats">
+                      <div class="stat-icon">
+                        <el-icon><Files /></el-icon>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-label">未完成任务</div>
+                        <div class="stat-value">{{ unfinishedTask }}个</div>
+                      </div>
+                    </div>
+                  </el-col>
+                  <el-col :span="20">
+                    <div class="stat-card week-stats">
+                      <div class="stat-icon">
+                        <el-icon><Files /></el-icon>
+                      </div>
+                      <div class="stat-info">
+                        <div class="stat-label">未解决问题</div>
+                        <div class="stat-value">{{ unresolvedIssue }}个</div>
+                      </div>
+                    </div>
+                  </el-col>
+                </el-row>
+                <!-- 时钟模块 -->
                 <div class="clock-section">
                   <div class="clock-display">
                     <div class="time">{{ currentTime }}</div>
                     <div class="date">{{ currentDate }}</div>
                   </div>
                 </div>
+                <!-- 工时模块 -->
                 <el-row :gutter="20" class="stats-section">
-                  <el-col :span="12">
+                  <el-col :span="20">
                     <div class="stat-card today-stats">
                       <div class="stat-icon">
                         <el-icon><Calendar /></el-icon>
@@ -82,12 +113,10 @@
                       <div class="stat-info">
                         <div class="stat-label">今日工时</div>
                         <div class="stat-value">{{ todayHours }}h</div>
-                        <div class="stat-progress">
-                        </div>
                       </div>
                     </div>
                   </el-col>
-                  <el-col :span="12">
+                  <el-col :span="20">
                     <div class="stat-card week-stats">
                       <div class="stat-icon">
                         <el-icon><Calendar /></el-icon>
@@ -95,8 +124,6 @@
                       <div class="stat-info">
                         <div class="stat-label">本周工时</div>
                         <div class="stat-value">{{ weekHours }}h</div>
-                        <div class="stat-progress">
-                        </div>
                       </div>
                     </div>
                   </el-col>
@@ -130,10 +157,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, reactive} from 'vue'
 import Layout from "@/components/Layout.vue"
-import { Calendar } from '@element-plus/icons-vue'
-
+import { Calendar, Files} from '@element-plus/icons-vue'
+import {debounce} from "lodash";
 
 // 模拟数据
 const taskList = ref([
@@ -184,6 +211,8 @@ const currentTime = ref('')
 const currentDate = ref('')
 const todayHours = ref(6.5)
 const weekHours = ref(32.5)
+const unfinishedTask = ref(5)
+const unresolvedIssue = ref(1)
 
 const updateTime = () => {
   const now = new Date()
@@ -209,9 +238,119 @@ onMounted(() => {
 onUnmounted(() => {
   clearInterval(timer)
 })
+
+const imgSrc = {
+  Static: import('../../assets/pet/Static.gif'),
+  Attack: import('../../assets/pet/Attack.gif'),
+  Attacked: import('../../assets/pet/Attacked.gif'),
+  Walk: import('../../assets/pet/Walk.gif'),
+}
+const pet = reactive({
+  src: imgSrc.Static,
+})
+const petContainer = ref<HTMLElement | null>()
+const petRef = ref<HTMLElement | null>()
+const mousePosition = reactive({
+  x: 0,
+  y: 0,
+})
+const petPosition = reactive({
+  x: 0,
+  y: 0,
+})
+const deg = ref<number>(0)
+const deg_y = ref<number>(0)
+const count = ref<number>(0)
+const speed = 50
+let time = null
+let isListenMouseMove = false
+const showPet = ref(true);
+
+onMounted(async () => {
+  changeSrc('Static')
+})
+
+const changeSrc = async (key) => {
+  let res = await imgSrc[key];
+  pet.src = res.default
+}
+
+const attckPet = () => {
+  if (isListenMouseMove) return
+  changeSrc('Attacked')
+  window.addEventListener('mousemove', listenMouseMove)
+  isListenMouseMove = true
+  petPosition.x = petContainer.value?.offsetLeft
+  petPosition.y = petContainer.value?.offsetTop
+  setTimeout(() => {
+    changeSrc('Walk')
+    time = setInterval(() => {
+      move()
+    }, 10);
+  }, 300);
+}
+
+const listenMouseMove = (e: MouseEvent) => {
+  // 需要移动的x轴距离 = 当前鼠标位置-距离浏览器左边的距离-宠物相对于浏览器页面宽度/2（宽的中心位置）
+  mousePosition.x = e.x - petContainer.value.offsetLeft - petContainer.value.clientWidth / 2;
+  mousePosition.y = e.y - petContainer.value.offsetTop - petContainer.value.clientHeight / 2;
+  let speed = Math.ceil((Math.pow(mousePosition.x, 2) + Math.pow(mousePosition.y, 2)) / 1000);
+  // 需要的旋转角度计算
+  deg.value = 360 * Math.atan(mousePosition.y / mousePosition.x) / (2 * Math.PI);
+  // 这里的event.clientX 返回当事件被触发时鼠标指针相对于浏览器页面（或客户区）的水平坐标。
+  // 这里有关于图片位置的设置,注意你的gif图的方向，原图方向向左，那么这里就是小于，原图方向向右，这里就是大于。
+  // 翻转图片
+  if (petContainer.value.offsetLeft < e.clientX) {
+    deg_y.value = - 180;
+  } else {
+    deg_y.value = 0;
+  }
+  //这里每一次移动鼠标都要重新计算距离，所以这里的count需要清零
+  count.value = 0;
+}
+
+const move = () => {
+  if (count.value < speed) {
+    petPosition.x += mousePosition.x / speed
+    petPosition.y += mousePosition.y / speed
+    petRef.value.style.transform = "rotateZ(" + deg.value + "deg) rotateY(" + deg_y.value + "deg)"
+    petContainer.value.style.left = petPosition.x + "px"
+    petContainer.value.style.top = petPosition.y + "px"
+    count.value++
+  } else {
+    window.removeEventListener('mousemove', listenMouseMove)
+    changeSrc('Attack')
+    setTimeout(() => {
+      changeSrc('Static')
+      time = clearInterval(time);
+      count.value = 0;
+      isListenMouseMove = false;
+    }, 1000);
+  }
+}
+
 </script>
 
 <style scoped>
+.pet-container {
+  position: fixed;
+  bottom: 7%;
+  left: 0.3%;
+  z-index: 999;
+}
+
+.pet {
+  width: 50px;
+  height: 65px;
+  cursor: pointer;
+}
+
+.dashboard-content {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
 .main-content {
   padding: 20px;
   background-color: #f6f8fa;
@@ -300,19 +439,6 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
-.dashboard-content {
-  padding: 20px;
-}
-
-.stat-card {
-  background-color: #fff;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 8px;
-}
-
 .stat-card h4 {
   margin: 0 0 8px 0;
   font-size: 14px;
@@ -392,43 +518,40 @@ onUnmounted(() => {
   }
 }
 
-.dashboard-content {
-  padding: 20px;
+.clock-section {
   display: flex;
-  flex-direction: row;
   gap: 20px;
 }
 
-.clock-section {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
 .clock-display {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   padding: 20px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #409EFF 0%, #36cfc9 100%);
-  color: white;
-  width: 100%;
-  max-width: 300px;
+  background: linear-gradient(135deg, #bcdbfa 0%, #9ac5f6 100%);
+  height: 100%;
+  width: 300px;
 }
 
 .clock-display .time {
   font-size: 36px;
   font-weight: 600;
   letter-spacing: 2px;
-  margin-bottom: 5px;
+  line-height: 1.2;
 }
 
 .clock-display .date {
   font-size: 14px;
   opacity: 0.9;
+  margin-top: 5px;
+  line-height: 1.2;
 }
 
 .stats-section {
-  margin-bottom: 20px;
+  display: flex;
+  gap: 20px;
 }
 
 .stat-card {
@@ -439,6 +562,9 @@ onUnmounted(() => {
   gap: 15px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   height: 120px;
+  align-items: center;
+  width: 100%;
+  margin-left: 20px;
 }
 
 .stat-icon {
@@ -449,6 +575,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 10px;
 }
 
 .stat-icon :deep(.el-icon) {
@@ -475,58 +602,10 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
-.stat-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .stat-progress :deep(.el-progress-bar__outer) {
   background-color: #e9ecef;
 }
 
-.progress-text {
-  font-size: 12px;
-  color: #909399;
-  min-width: 35px;
-}
-
-.work-schedule {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 30px;
-  padding: 15px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.schedule-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.schedule-label {
-  font-size: 13px;
-  color: #909399;
-}
-
-.schedule-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.schedule-divider {
-  width: 1px;
-  height: 40px;
-  background-color: #e4e7ed;
-}
-
-/* Dark theme adjustments */
 :deep(.dark) {
   .stat-card {
     background-color: #363636;
@@ -538,18 +617,6 @@ onUnmounted(() => {
 
   .stat-value {
     color: #e5e7eb;
-  }
-
-  .work-schedule {
-    background-color: #363636;
-  }
-
-  .schedule-value {
-    color: #e5e7eb;
-  }
-
-  .schedule-divider {
-    background-color: #4a4a4a;
   }
 
   .stat-progress :deep(.el-progress-bar__outer) {
@@ -579,16 +646,6 @@ onUnmounted(() => {
 
   .stat-value {
     font-size: 20px;
-  }
-
-  .work-schedule {
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .schedule-divider {
-    width: 100%;
-    height: 1px;
   }
 }
 </style>
