@@ -43,13 +43,14 @@
                       class="white-bg-input"
                       style="width: 53%"
                   >
-                    <el-option label="日志" value="daily" />
-                    <el-option label="周志" value="weekly" />
-                    <el-option label="月志" value="monthly" />
+                    <el-option label="全部" value="" />
+                    <el-option label="日志" value="1" />
+                    <el-option label="周志" value="2" />
+                    <el-option label="月志" value="3" />
                   </el-select>
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="handleQuery" style="width: 80%; margin-top: 20px;">查询</el-button>
+                  <el-button type="primary" @click="handleReset" style="width: 80%; margin-top: 20px;">重置</el-button>
                 </el-form-item>
               </el-form>
             </el-card>
@@ -173,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -192,11 +193,11 @@ const logForm = reactive({
 })
 
 const logs = ref([
-  { id: 1, date: '2025-03-15', project: '项目A', content: '完成用户认证模块', hours: 8 },
-  { id: 2, date: '2025-03-14', project: '项目B', content: '优化数据库查询性能', hours: 6 },
-  { id: 3, date: '2025-03-13', project: '项目C', content: '设计新功能原型', hours: 7 },
-  { id: 4, date: '2025-03-12', project: '项目A', content: '修复登录页面bug', hours: 4 },
-  { id: 5, date: '2025-03-11', project: '项目B', content: '实现数据导出功能', hours: 5 },
+  { id: 1, date: '2025-03-15', project: '项目A', content: '完成用户认证模块', hours: 8, type: '1'},
+  { id: 2, date: '2025-03-14', project: '项目B', content: '优化数据库查询性能', hours: 6, type: '2'},
+  { id: 3, date: '2025-03-13', project: '项目C', content: '设计新功能原型', hours: 7, type: '1'},
+  { id: 4, date: '2025-03-12', project: '项目A', content: '修复登录页面bug', hours: 4, type: '1'},
+  { id: 5, date: '2025-03-11', project: '项目B', content: '实现数据导出功能', hours: 5, type: '3'},
 ])
 
 const currentPage = ref(1)
@@ -260,9 +261,13 @@ const requiredLogs = computed(() => {
   return daysInMonth // 假设每天需要一条日志
 })
 
-const handleQuery = () => {
-  ElMessage.success('查询成功')
-  // 在实际应用中，这里应该调用API来查询日志
+const handleReset = () => {
+  queryForm.dateRange = []
+  queryForm.year = ''
+  queryForm.month = ''
+  queryForm.logType = ''
+  searchKeyword.value = ''
+  ElMessage.success('查询条件已重置')
 }
 
 const progressFormat = (percentage: number) => {
@@ -305,14 +310,14 @@ const getTimelineItemType = (project: string) => {
   return types[project] || 'info'
 }
 
-const getLogCount = (day: string) => {
-  const count = logs.value.filter((log) => log.date === day).length
-  return count > 0 ? `（${count}）` : ''
-}
-
 const openAddLogDialog = () => {
   addLogDialogVisible.value = true
 }
+
+// 监听查询条件变化，自动更新筛选结果
+watch([() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, () => queryForm.logType], () => {
+  currentPage.value = 1 // 重置页码
+})
 </script>
 
 <style scoped>
