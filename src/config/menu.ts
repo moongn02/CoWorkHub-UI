@@ -111,6 +111,30 @@ export const menuList: MenuItem[] = [
         icon: 'Setting',
         children: [
             {
+                path: '/settings/user',
+                title: '用户管理',
+                component: 'settings/user',
+                meta: {
+                    title: '用户管理'
+                }
+            },
+            {
+                path: '/settings/role',
+                title: '角色管理',
+                component: 'settings/role',
+                meta: {
+                    title: '角色管理'
+                }
+            },
+            {
+                path: '/settings/permission',
+                title: '权限管理',
+                component: 'settings/permission',
+                meta: {
+                    title: '权限管理'
+                }
+            },
+            {
                 path: '/settings/project',
                 title: '项目管理',
                 component: 'settings/project',
@@ -124,14 +148,6 @@ export const menuList: MenuItem[] = [
                 component: 'settings/department',
                 meta: {
                     title: '部门管理'
-                }
-            },
-            {
-                path: '/settings/permission',
-                title: '权限管理',
-                component: 'settings/permission',
-                meta: {
-                    title: '权限管理'
                 }
             },
             {
