@@ -1,15 +1,27 @@
 <template>
   <Layout>
     <template #content>
-      <!-- 宠物容器 -->
-      <div class="pet-container" ref="petContainer" v-if="showPet">
-        <img ref="petRef" @click="debounce(attckPet, 150)()" class="pet" :src="pet.src" alt="" srcset="">
-      </div>
       <div class="main-content">
-        <!-- 任务单和问题单行 -->
-        <el-row :gutter="20" class="content-row-1">
+        <!-- 顶部统计卡片 -->
+        <el-row :gutter="20" class="stats-row">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6" v-for="stat in dashboardStats" :key="stat.label">
+            <el-card class="stats-card" shadow="hover">
+              <div class="stat-content">
+                <el-icon :size="24" :color="stat.color"><component :is="stat.icon" /></el-icon>
+                <div class="stat-info">
+                  <div class="stat-label">{{ stat.label }}</div>
+                  <div class="stat-value" :style="{ color: stat.color }">{{ stat.value }}</div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <!-- 任务单和问题单 -->
+        <el-row :gutter="20" class="content-row">
+          <!-- 任务单 -->
           <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-            <el-card class="content-card" shadow="hover">
+            <el-card class="list-card-1" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">任务单</h3>
@@ -17,13 +29,13 @@
                 </div>
               </template>
               <div class="scrollable-content">
-                <div v-for="task in taskList" :key="task.id" class="list-item">
+                <div v-for="task in tasks" :key="task.id" class="list-item">
                   <div class="item-header">
                     <el-tag size="small" type="primary">{{ task.id }}</el-tag>
                     <el-tag size="small" :type="getStatusType(task.status)">{{ task.status }}</el-tag>
                   </div>
                   <div class="item-content">
-                    <h4>{{ task.name }}</h4>
+                    <h4><a :href="task.url" target="_blank">{{ task.title }}</a></h4>
                     <p class="item-info">
                       <span>执行人: {{ task.executor }}</span>
                       <span>期望完成时间: {{ task.expectedDate }}</span>
@@ -34,8 +46,9 @@
             </el-card>
           </el-col>
 
+          <!-- 问题单 -->
           <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-            <el-card class="content-card" shadow="hover">
+            <el-card class="list-card-1" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">问题单</h3>
@@ -43,13 +56,13 @@
                 </div>
               </template>
               <div class="scrollable-content">
-                <div v-for="issue in issueList" :key="issue.id" class="list-item">
+                <div v-for="issue in issues" :key="issue.id" class="list-item">
                   <div class="item-header">
                     <el-tag size="small" type="warning">{{ issue.id }}</el-tag>
                     <el-tag size="small" :type="getStatusType(issue.status)">{{ issue.status }}</el-tag>
                   </div>
                   <div class="item-content">
-                    <h4>{{ issue.title }}</h4>
+                    <h4><a :href="issue.url" target="_blank">{{ issue.title }}</a></h4>
                     <p class="item-info">
                       <span>执行人: {{ issue.executor }}</span>
                       <span>期望完成时间: {{ issue.expectedDate }}</span>
@@ -61,79 +74,11 @@
           </el-col>
         </el-row>
 
-        <!-- 工时仪表盘和工作备忘行 -->
-        <el-row :gutter="20" class="content-row-2">
-          <el-col :xs="24" :sm="24" :md="14" :lg="14" :xl="14">
-            <el-card class="content-card" shadow="hover">
-              <template #header>
-                <div class="card-header">
-                  <h3 class="card-title">仪表盘</h3>
-                </div>
-              </template>
-              <div class="dashboard-content">
-                <!-- 状态模块 -->
-                <el-row :gutter="20" class="stats-section">
-                  <el-col :span="20">
-                    <div class="stat-card today-stats">
-                      <div class="stat-icon">
-                        <el-icon><Files /></el-icon>
-                      </div>
-                      <div class="stat-info">
-                        <div class="stat-label">未完成任务</div>
-                        <div class="stat-value">{{ unfinishedTask }}个</div>
-                      </div>
-                    </div>
-                  </el-col>
-                  <el-col :span="20">
-                    <div class="stat-card week-stats">
-                      <div class="stat-icon">
-                        <el-icon><Files /></el-icon>
-                      </div>
-                      <div class="stat-info">
-                        <div class="stat-label">未解决问题</div>
-                        <div class="stat-value">{{ unresolvedIssue }}个</div>
-                      </div>
-                    </div>
-                  </el-col>
-                </el-row>
-                <!-- 时钟模块 -->
-                <div class="clock-section">
-                  <div class="clock-display">
-                    <div class="time">{{ currentTime }}</div>
-                    <div class="date">{{ currentDate }}</div>
-                  </div>
-                </div>
-                <!-- 工时模块 -->
-                <el-row :gutter="20" class="stats-section">
-                  <el-col :span="20">
-                    <div class="stat-card today-stats">
-                      <div class="stat-icon">
-                        <el-icon><Calendar /></el-icon>
-                      </div>
-                      <div class="stat-info">
-                        <div class="stat-label">今日工时</div>
-                        <div class="stat-value">{{ todayHours }}h</div>
-                      </div>
-                    </div>
-                  </el-col>
-                  <el-col :span="20">
-                    <div class="stat-card week-stats">
-                      <div class="stat-icon">
-                        <el-icon><Calendar /></el-icon>
-                      </div>
-                      <div class="stat-info">
-                        <div class="stat-label">本周工时</div>
-                        <div class="stat-value">{{ weekHours }}h</div>
-                      </div>
-                    </div>
-                  </el-col>
-                </el-row>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="24" :md="10" :lg="10" :xl="10">
-            <el-card class="content-card" shadow="hover">
+        <!-- 工作备忘和工作日志 -->
+        <el-row :gutter="20" class="content-row">
+          <!-- 工作备忘 -->
+          <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
+            <el-card class="list-card-2" shadow="hover">
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">工作备忘</h3>
@@ -141,10 +86,46 @@
                 </div>
               </template>
               <div class="scrollable-content">
-                <div v-for="memo in memoList" :key="memo.id" class="list-item">
-                  <div class="item-content">
+                <el-empty v-if="!memos.length" :image-size="80" description="暂无备忘" />
+                <div v-else v-for="memo in memos" :key="memo.id" class="list-item">
+                  <div class="item-header">
                     <h4>{{ memo.title }}</h4>
-                    <p class="memo-content">{{ memo.content }}</p>
+                    <el-button type="text" @click="viewFullMemo(memo)">
+                      <el-icon><View /></el-icon>
+                    </el-button>
+                  </div>
+                  <div class="item-content">
+                    <p class="memo-content">{{ truncateContent(memo.content) }}</p>
+                    <p class="item-info">
+                      <span>记录时间: {{ memo.createTime }}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+
+          <!-- 工作日志 -->
+          <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
+            <el-card class="list-card-2" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <h3 class="card-title">今日工作日志</h3>
+                  <el-button type="primary" link @click="openAddLogDialog">添加日志</el-button>
+                </div>
+              </template>
+              <div class="scrollable-content">
+                <el-empty v-if="!todayLog" :image-size="80" description="今日日志尚未填写">
+                  <el-button type="primary" @click="openAddLogDialog">立即填写</el-button>
+                </el-empty>
+                <div v-else class="list-item">
+                  <div class="item-content">
+                    <h4>{{ todayLog.title }}</h4>
+                    <p class="memo-content">{{ todayLog.content }}</p>
+                    <p class="item-info">
+                      <span>记录时间: {{ todayLog.createTime }}</span>
+                      <span>工时: {{ todayLog.hours }}h</span>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -154,44 +135,192 @@
       </div>
     </template>
   </Layout>
+
+  <!-- 添加工作日志对话框 -->
+  <el-dialog v-model="addLogDialogVisible" title="添加工作日志" width="30%">
+    <el-form :model="logForm" @submit.prevent="submitLog">
+      <el-form-item label="日期" required>
+        <el-date-picker
+            v-model="logForm.date"
+            type="date"
+            placeholder="选择日期"
+            class="white-bg-input"
+            style="width: 50%"
+        />
+      </el-form-item>
+      <el-form-item label="类型" required>
+        <el-select
+            v-model="logForm.type"
+            placeholder="请选择日志类型"
+            class="white-bg-input"
+            style="width: 50%"
+        >
+          <el-option label="日志" value="1" />
+          <el-option label="周志" value="2" />
+          <el-option label="月志" value="3" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="工作内容" required>
+        <el-input
+            v-model="logForm.content"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入今日工作内容"
+            class="white-bg-input"
+        />
+      </el-form-item>
+      <el-form-item label="工时" required>
+        <el-input-number
+            v-model="logForm.hours"
+            :min="0.5"
+            :max="24"
+            :step="0.5"
+            class="white-bg-input"
+            style="width: 50%"
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="addLogDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitLog">确定</el-button>
+      </span>
+    </template>
+  </el-dialog>
+
+  <!-- 查看完整备忘对话框 -->
+  <el-dialog v-model="viewMemoDialogVisible" :title="selectedMemo.title" width="30%">
+    <p>{{ selectedMemo.content }}</p>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="viewMemoDialogVisible = false">关闭</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, reactive} from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import Layout from "@/components/Layout.vue"
-import { Calendar, Files} from '@element-plus/icons-vue'
-import {debounce} from "lodash";
+import { Files, Warning, Calendar, Check, View } from '@element-plus/icons-vue'
+import axios from 'axios'
 
-// 模拟数据
-const taskList = ref([
-  { id: '999', name: '[OBTIMES > OBTIMES(MES)-Android-EN', status: '已过期', executor: '黄梦玲', expectedDate: '2024-06-12' },
-  { id: '913', name: '工作报告', status: '进行中', executor: '黄梦玲', expectedDate: '2024-06-12' },
-  { id: '888', name: '系统优化任务', status: '待处理', executor: '张三', expectedDate: '2024-06-15' },
-  { id: '777', name: '功能开发任务', status: '已完成', executor: '李四', expectedDate: '2024-06-10' },
-  { id: '666', name: '性能优化', status: '进行中', executor: '王五', expectedDate: '2024-06-18' },
-  { id: '555', name: '接口开发', status: '待处理', executor: '赵六', expectedDate: '2024-06-20' },
-  { id: '777', name: '接口开发', status: '待处理', executor: '赵六', expectedDate: '2024-06-20' },
+// 定义接口类型
+interface Task {
+  id: string
+  title: string
+  status: string
+  executor: string
+  expectedDate: string
+  url: string
+}
+
+interface Issue {
+  id: string
+  title: string
+  status: string
+  executor: string
+  expectedDate: string
+  url: string
+}
+
+interface Memo {
+  id: string
+  title: string
+  content: string
+  createTime: string
+}
+
+interface Log {
+  id: string
+  title: string
+  content: string
+  createTime: string
+  hours: number
+}
+
+// 仪表盘统计数据
+const dashboardStats = ref([
+  { label: '未完成任务', value: '0', icon: Files, color: '#409EFF' },
+  { label: '未解决问题', value: '0', icon: Warning, color: '#E6A23C' },
+  { label: '今日工作', value: '0h', icon: Calendar, color: '#67C23A' },
+  { label: '本周工作', value: '0h', icon: Check, color: '#909399' },
 ])
 
-const issueList = ref([
-  { id: 'ISS-001', title: '系统Bug修复', status: '待解决', executor: '张三', expectedDate: '2024-06-15' },
-  { id: 'ISS-002', title: '功能优化建议', status: '已处理', executor: '李四', expectedDate: '2024-06-16' },
-  { id: 'ISS-003', title: '性能问题', status: '处理中', executor: '王五', expectedDate: '2024-06-17' },
-  { id: 'ISS-004', title: '界面显示异常', status: '待验证', executor: '赵六', expectedDate: '2024-06-18' },
-  { id: 'ISS-005', title: '数据同步问题', status: '进行中', executor: '黄梦玲', expectedDate: '2024-06-19' },
-  { id: 'ISS-006', title: '登录异常', status: '待处理', executor: '张三', expectedDate: '2024-06-20' },
-])
+// 列表数据
+const tasks = ref<Task[]>([])
+const issues = ref<Issue[]>([])
+const memos = ref<Memo[]>([])
+const todayLog = ref<Log | null>(null)
 
-const memoList = ref([
-  { id: 1, date: '2024-06-12', title: '项目进度会议', content: '讨论项目milestone完成情况' },
-  { id: 2, date: '2024-06-11', title: '代码评审', content: '评审新功能代码实现' },
-  { id: 3, date: '2024-06-10', title: '团队会议', content: '讨论下周工作计划' },
-  { id: 4, date: '2024-06-09', title: '需求分析', content: '分析新功能需求文档' },
-  { id: 5, date: '2024-06-08', title: '技术讨论', content: '讨论新技术方案实现' },
-  { id: 6, date: '2024-06-07', title: '项目复盘', content: '总结项目经验和问题' },
-  { id: 7, date: '2024-06-11', title: '项目结束', content: '上线' },
-])
+// 对话框控制
+const addLogDialogVisible = ref(false)
+const viewMemoDialogVisible = ref(false)
+const selectedMemo = ref<Memo>({ id: '', title: '', content: '', createTime: '' })
 
+// 日志表单
+const logForm = ref({
+  date: new Date(),
+  type: '1',
+  content: '',
+  hours: 8,
+})
+
+// 获取仪表盘数据
+const fetchDashboardData = async () => {
+  try {
+    const response = await axios.get('/api/dashboard/stats')
+    const data = response.data
+    dashboardStats.value[0].value = data.unfinishedTasks
+    dashboardStats.value[1].value = data.unresolvedIssues
+    dashboardStats.value[2].value = `${data.todayHours}h`
+    dashboardStats.value[3].value = `${data.weekHours}h`
+  } catch (error) {
+    console.error('获取仪表盘数据失败:', error)
+  }
+}
+
+// 获取任务列表
+const fetchTasks = async () => {
+  try {
+    const response = await axios.get('/api/tasks')
+    tasks.value = response.data
+  } catch (error) {
+    console.error('获取任务列表失败:', error)
+  }
+}
+
+// 获取问题列表
+const fetchIssues = async () => {
+  try {
+    const response = await axios.get('/api/issues')
+    issues.value = response.data
+  } catch (error) {
+    console.error('获取问题列表失败:', error)
+  }
+}
+
+// 获取工作备忘
+const fetchMemos = async () => {
+  try {
+    const response = await axios.get('/api/memos')
+    memos.value = response.data
+  } catch (error) {
+    console.error('获取工作备忘失败:', error)
+  }
+}
+
+// 获取今日工作日志
+const fetchTodayLog = async () => {
+  try {
+    const response = await axios.get('/api/logs/today')
+    todayLog.value = response.data
+  } catch (error) {
+    console.error('获取今日工作日志失败:', error)
+  }
+}
+
+// 状态类型映射
 const getStatusType = (status: string) => {
   const types = {
     '已过期': 'danger',
@@ -206,168 +335,121 @@ const getStatusType = (status: string) => {
   return types[status] || 'info'
 }
 
-// 时间相关
-const currentTime = ref('')
-const currentDate = ref('')
-const todayHours = ref(6.5)
-const weekHours = ref(32.5)
-const unfinishedTask = ref(5)
-const unresolvedIssue = ref(1)
-
-const updateTime = () => {
-  const now = new Date()
-  const hours = String(now.getHours()).padStart(2, '0')
-  const minutes = String(now.getMinutes()).padStart(2, '0')
-  const seconds = String(now.getSeconds()).padStart(2, '0')
-  currentTime.value = `${hours}:${minutes}:${seconds}`
-
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
-  currentDate.value = `${year}年${month}月${day}日 ${weekdays[now.getDay()]}`
+// 截断内容
+const truncateContent = (content: string, length = 50) => {
+  return content.length > length ? content.slice(0, length) + '...' : content
 }
 
-let timer: number
-
-onMounted(() => {
-  updateTime()
-  timer = window.setInterval(updateTime, 1000)
-})
-
-onUnmounted(() => {
-  clearInterval(timer)
-})
-
-const imgSrc = {
-  Static: import('../../assets/pet/Static.gif'),
-  Attack: import('../../assets/pet/Attack.gif'),
-  Attacked: import('../../assets/pet/Attacked.gif'),
-  Walk: import('../../assets/pet/Walk.gif'),
+// 查看完整备忘
+const viewFullMemo = (memo: Memo) => {
+  selectedMemo.value = memo
+  viewMemoDialogVisible.value = true
 }
-const pet = reactive({
-  src: imgSrc.Static,
-})
-const petContainer = ref<HTMLElement | null>()
-const petRef = ref<HTMLElement | null>()
-const mousePosition = reactive({
-  x: 0,
-  y: 0,
-})
-const petPosition = reactive({
-  x: 0,
-  y: 0,
-})
-const deg = ref<number>(0)
-const deg_y = ref<number>(0)
-const count = ref<number>(0)
-const speed = 50
-let time = null
-let isListenMouseMove = false
-const showPet = ref(true);
 
+// 打开添加日志对话框
+const openAddLogDialog = () => {
+  addLogDialogVisible.value = true
+}
+
+// 提交日志
+const submitLog = async () => {
+  try {
+    await axios.post('/api/logs', logForm.value)
+    addLogDialogVisible.value = false
+    await fetchTodayLog()
+    // 重置表单
+    logForm.value = {
+      date: new Date(),
+      type: '1',
+      content: '',
+      hours: 8,
+    }
+  } catch (error) {
+    console.error('提交日志失败:', error)
+  }
+}
+
+// 页面加载时获取数据
 onMounted(async () => {
-  changeSrc('Static')
+  await Promise.all([
+    fetchDashboardData(),
+    fetchTasks(),
+    fetchIssues(),
+    fetchMemos(),
+    fetchTodayLog()
+  ])
 })
-
-const changeSrc = async (key) => {
-  let res = await imgSrc[key];
-  pet.src = res.default
-}
-
-const attckPet = () => {
-  if (isListenMouseMove) return
-  changeSrc('Attacked')
-  window.addEventListener('mousemove', listenMouseMove)
-  isListenMouseMove = true
-  petPosition.x = petContainer.value?.offsetLeft
-  petPosition.y = petContainer.value?.offsetTop
-  setTimeout(() => {
-    changeSrc('Walk')
-    time = setInterval(() => {
-      move()
-    }, 10);
-  }, 300);
-}
-
-const listenMouseMove = (e: MouseEvent) => {
-  // 需要移动的x轴距离 = 当前鼠标位置-距离浏览器左边的距离-宠物相对于浏览器页面宽度/2（宽的中心位置）
-  mousePosition.x = e.x - petContainer.value.offsetLeft - petContainer.value.clientWidth / 2;
-  mousePosition.y = e.y - petContainer.value.offsetTop - petContainer.value.clientHeight / 2;
-  let speed = Math.ceil((Math.pow(mousePosition.x, 2) + Math.pow(mousePosition.y, 2)) / 1000);
-  // 需要的旋转角度计算
-  deg.value = 360 * Math.atan(mousePosition.y / mousePosition.x) / (2 * Math.PI);
-  // 这里的event.clientX 返回当事件被触发时鼠标指针相对于浏览器页面（或客户区）的水平坐标。
-  // 这里有关于图片位置的设置,注意你的gif图的方向，原图方向向左，那么这里就是小于，原图方向向右，这里就是大于。
-  // 翻转图片
-  if (petContainer.value.offsetLeft < e.clientX) {
-    deg_y.value = - 180;
-  } else {
-    deg_y.value = 0;
-  }
-  //这里每一次移动鼠标都要重新计算距离，所以这里的count需要清零
-  count.value = 0;
-}
-
-const move = () => {
-  if (count.value < speed) {
-    petPosition.x += mousePosition.x / speed
-    petPosition.y += mousePosition.y / speed
-    petRef.value.style.transform = "rotateZ(" + deg.value + "deg) rotateY(" + deg_y.value + "deg)"
-    petContainer.value.style.left = petPosition.x + "px"
-    petContainer.value.style.top = petPosition.y + "px"
-    count.value++
-  } else {
-    window.removeEventListener('mousemove', listenMouseMove)
-    changeSrc('Attack')
-    setTimeout(() => {
-      changeSrc('Static')
-      time = clearInterval(time);
-      count.value = 0;
-      isListenMouseMove = false;
-    }, 1000);
-  }
-}
-
 </script>
 
 <style scoped>
-.pet-container {
-  position: fixed;
-  bottom: 7%;
-  left: 0.3%;
-  z-index: 999;
-}
-
-.pet {
-  width: 50px;
-  height: 65px;
-  cursor: pointer;
-}
-
-.dashboard-content {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-
+/* 主容器样式 */
 .main-content {
-  padding: 20px;
+  padding: 0 20px 20px 20px;
   background-color: #f6f8fa;
+  min-height: calc(100vh - 64px);
+}
+
+/* 统计卡片样式 */
+.stats-row {
+  margin-bottom: 20px;
+}
+
+.stats-card {
   border-radius: 8px;
-}
-
-.content-row-2 {
-  margin-top: 20px;
-}
-
-.content-card {
-  height: 385px;
-  border-radius: 12px;
+  height: 100px;
   transition: all 0.3s ease;
 }
 
-.content-card:hover {
+.stats-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 20px;
+}
+
+.stat-info {
+  margin-left: 16px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #909399;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* 列表卡片样式 */
+.content-row {
+  margin-bottom: 20px;
+}
+
+.list-card-1 {
+  height: 390px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.list-card-2 {
+  height: 350px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.list-card-1:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.list-card-2:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -385,8 +467,9 @@ const move = () => {
   color: #303133;
 }
 
+/* 滚动内容区域样式 */
 .scrollable-content {
-  max-height: 290px;
+  max-height: 330px;
   overflow-y: auto;
 }
 
@@ -403,12 +486,14 @@ const move = () => {
   background: #909399;
 }
 
+/* 列表项样式 */
 .list-item {
   background-color: #fff;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e0e0e0;
 }
 
 .item-header {
@@ -424,32 +509,28 @@ const move = () => {
   line-height: 1.4;
 }
 
+.item-content h4 a {
+  color: #409EFF;
+  text-decoration: none;
+}
+
+.item-content h4 a:hover {
+  text-decoration: underline;
+}
+
 .item-info {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
   color: #909399;
-  margin: 0;
+  margin: 8px 0 0 0;
 }
 
 .memo-content {
   font-size: 13px;
   color: #606266;
-  margin: 4px 0 0 0;
   line-height: 1.4;
-}
-
-.stat-card h4 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: #909399;
-}
-
-.stat-value {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #409EFF;
+  margin: 4px 0;
 }
 
 /* 暗色主题适配 */
@@ -458,7 +539,8 @@ const move = () => {
     background-color: #1a1a1a;
   }
 
-  .content-card {
+  .stats-card,
+  .list-card {
     background-color: #2d2d2d;
     border-color: rgba(255, 255, 255, 0.1);
   }
@@ -470,26 +552,23 @@ const move = () => {
   .list-item {
     background-color: #363636;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border-color: #4a4a4a;
   }
 
-  .item-content h4 {
+  .item-content h4,
+  .memo-header h4 {
     color: #e5e7eb;
   }
 
-  .item-info {
-    color: #909399;
+  .item-content h4 a {
+    color: #60a5fa;
   }
 
   .memo-content {
     color: #a0a0a0;
   }
 
-  .stat-card {
-    background-color: #363636;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  .stat-card h4 {
+  .stat-label {
     color: #a0a0a0;
   }
 
@@ -508,140 +587,21 @@ const move = () => {
     padding: 10px;
   }
 
-  .content-card {
+  .stats-card {
+    margin-bottom: 10px;
+  }
+
+  .list-card {
     height: 350px;
-    margin-bottom: 10px;
+    margin-bottom: 20px;
   }
 
-  .stat-card {
-    margin-bottom: 10px;
-  }
-}
-
-.clock-section {
-  display: flex;
-  gap: 20px;
-}
-
-.clock-display {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #bcdbfa 0%, #9ac5f6 100%);
-  height: 100%;
-  width: 300px;
-}
-
-.clock-display .time {
-  font-size: 36px;
-  font-weight: 600;
-  letter-spacing: 2px;
-  line-height: 1.2;
-}
-
-.clock-display .date {
-  font-size: 14px;
-  opacity: 0.9;
-  margin-top: 5px;
-  line-height: 1.2;
-}
-
-.stats-section {
-  display: flex;
-  gap: 20px;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  gap: 15px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  height: 120px;
-  align-items: center;
-  width: 100%;
-  margin-left: 20px;
-}
-
-.stat-icon {
-  background: rgba(64, 158, 255, 0.1);
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px;
-}
-
-.stat-icon :deep(.el-icon) {
-  font-size: 24px;
-  color: #409EFF;
-}
-
-.stat-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.stat-label {
-  color: #909399;
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 12px;
-}
-
-.stat-progress :deep(.el-progress-bar__outer) {
-  background-color: #e9ecef;
-}
-
-:deep(.dark) {
-  .stat-card {
-    background-color: #363636;
+  .stat-content {
+    padding: 0 10px;
   }
 
-  .stat-icon {
-    background: rgba(64, 158, 255, 0.2);
-  }
-
-  .stat-value {
-    color: #e5e7eb;
-  }
-
-  .stat-progress :deep(.el-progress-bar__outer) {
-    background-color: #4a4a4a;
-  }
-}
-
-/* Responsive adjustments */
-@media screen and (max-width: 768px) {
-  .clock-display {
-    max-width: 100%;
-  }
-
-  .clock-display .time {
-    font-size: 28px;
-  }
-
-  .stat-card {
-    height: auto;
-    padding: 15px;
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
+  .stat-info {
+    margin-left: 12px;
   }
 
   .stat-value {
