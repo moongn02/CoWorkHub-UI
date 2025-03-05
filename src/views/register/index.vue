@@ -1,22 +1,22 @@
 <template>
-  <div class="login-container">
-    <div class="login-box">
-      <div class="login-header">
-        <img src="@/assets/logo.svg" alt="logo" class="logo"/>
+  <div class="register-container">
+    <div class="register-box">
+      <div class="register-header">
+        <img src="@/assets/logo.svg" alt="logo" class="logo" />
         <h1 class="title">CoWorkHub</h1>
       </div>
-      <h2 class="subtitle">登录</h2>
+      <h2 class="subtitle">注册</h2>
 
       <el-form
-          ref="loginFormRef"
-          :model="loginForm"
-          :rules="loginRules"
-          class="login-form"
+          ref="registerFormRef"
+          :model="registerForm"
+          :rules="registerRules"
+          class="register-form"
       >
         <el-form-item prop="username">
           <el-input
-              v-model="loginForm.username"
-              placeholder="用户名"
+              v-model="registerForm.username"
+              placeholder="请输入用户名"
               :prefix-icon="User"
               size="large"
           />
@@ -24,8 +24,19 @@
 
         <el-form-item prop="password">
           <el-input
-              v-model="loginForm.password"
+              v-model="registerForm.password"
               placeholder="请输入密码"
+              type="password"
+              :prefix-icon="Lock"
+              show-password
+              size="large"
+          />
+        </el-form-item>
+
+        <el-form-item prop="confirmPassword">
+          <el-input
+              v-model="registerForm.confirmPassword"
+              placeholder="请确认密码"
               type="password"
               :prefix-icon="Lock"
               show-password
@@ -37,20 +48,18 @@
           <el-button
               :loading="loading"
               type="primary"
-              class="login-button"
-              @click="handleLogin"
+              class="register-button"
+              @click="handleRegister"
               size="large"
           >
-            登录
+            注册
           </el-button>
         </el-form-item>
       </el-form>
 
-      <div class="login-footer">
-        <div class="footer-links">
-          <router-link to="/register" class="register-link">注册</router-link>
-          <router-link to="/forgot-password" class="forgot-password">忘记密码？</router-link>
-        </div>
+      <div class="register-footer">
+        <span>已有账号？</span>
+        <router-link to="/login" class="login-link">立即登录</router-link>
       </div>
     </div>
   </div>
@@ -59,57 +68,82 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import type { LoginData } from '@/types/auth'
+
+interface RegisterFormData {
+  username: string
+  password: string
+  confirmPassword: string
+}
 
 const router = useRouter()
-const userStore = useUserStore()
-
-const loginFormRef = ref<FormInstance>()
+const registerFormRef = ref<FormInstance>()
 const loading = ref(false)
 
-const loginForm = reactive<LoginData>({
+const registerForm = reactive<RegisterFormData>({
   username: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 })
 
-const loginRules = reactive<FormRules>({
+// 自定义校验规则：确认密码
+const validateConfirmPassword = (rule: any, value: string, callback: any) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== registerForm.password) {
+    callback(new Error('两次输入密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const registerRules = reactive<FormRules>({
   username: [
-    { required: true, message: '请输入账号', trigger: 'blur' }
+    { required: true, message: '请输入账号', trigger: 'blur' },
+    { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' }
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能少于6个字符', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    { validator: validateConfirmPassword, trigger: 'blur' }
   ]
 })
 
-const handleLogin = async () => {
-  if (!loginFormRef.value) return
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
 
   try {
-    // await loginFormRef.value.validate()
-    // loading.value = true
+    await registerFormRef.value.validate()
+    loading.value = true
 
-    await userStore.loginAction(loginForm)
-    ElMessage.success('登录成功');
-    router.push({ name: 'HomePage' });
+    // 这里添加注册逻辑
+    // 模拟注册请求
+    setTimeout(() => {
+      loading.value = false
+      ElMessage.success('注册成功，请登录')
+      router.push('/login')
+    }, 1500)
   } catch (error: any) {
-    ElMessage.error(error.message || '登录失败')
+    loading.value = false
+    ElMessage.error(error.message || '注册失败')
   }
 }
 </script>
 
 <style lang="scss" scoped>
-.login-container {
+.register-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
   background-color: #f0f2f5;
 
-  .login-box {
+  .register-box {
     width: 480px;
     padding: 50px;
     background: #ffffff;
@@ -117,7 +151,7 @@ const handleLogin = async () => {
     border: 1px solid #e4e7ed;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 
-    .login-header {
+    .register-header {
       text-align: center;
       margin-bottom: 40px;
 
@@ -141,7 +175,7 @@ const handleLogin = async () => {
       text-align: center;
     }
 
-    .login-form {
+    .register-form {
       :deep(.el-input__wrapper) {
         background-color: #f5f7fa;
         border: 1px solid #dcdfe6;
@@ -161,7 +195,7 @@ const handleLogin = async () => {
         margin-bottom: 24px;
       }
 
-      .login-button {
+      .register-button {
         width: 100%;
         height: 48px;
         font-size: 18px;
@@ -182,22 +216,18 @@ const handleLogin = async () => {
       }
     }
 
-    .login-footer {
+    .register-footer {
       display: flex;
       justify-content: center;
+      align-items: center;
       margin-top: 24px;
+      font-size: 16px;
+      color: #606266;
 
-      .footer-links {
-        display: flex;
-        justify-content: space-between;
-        width: 100%;
-      }
-
-      .register-link,
-      .forgot-password {
+      .login-link {
+        margin-left: 8px;
         color: #4086f4;
         text-decoration: none;
-        font-size: 16px;
 
         &:hover {
           color: #3476e4;
