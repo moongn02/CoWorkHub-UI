@@ -1,3 +1,4 @@
+// src/utils/request.ts
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { getToken } from '@/utils/auth'
@@ -18,7 +19,6 @@ service.interceptors.request.use(
     return config
   },
   error => {
-    console.error('请求错误:', error)
     return Promise.reject(error)
   }
 )
@@ -26,26 +26,22 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   response => {
-    const res = response.data
-    
-    if (res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
-      
-      if (res.code === 401) {
-        localStorage.removeItem('coworkhub_token');
-        router.push('/login');
-      }
-      
-      return Promise.reject(new Error(res.message || '请求失败'))
+        return response
+    },
+    error => {
+        if (error.response) {
+            switch (error.response.status) {
+                case 401:
+                case 403:
+                    ElMessage.error('登录已过期或无权限，请重新登录')
+                    router.push('/login')
+                    break
+                default:
+                    ElMessage.error(error.response.data?.message || '请求失败')
+            }
+        }
+        return Promise.reject(error)
     }
-    
-    return res
-  },
-  error => {
-    console.error('响应错误:', error)
-    ElMessage.error(error.message || '请求失败')
-    return Promise.reject(error)
-  }
 )
 
 export default service 

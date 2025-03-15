@@ -87,17 +87,11 @@ const loginRules = reactive<FormRules>({
 
 const handleLogin = async () => {
   if (!loginFormRef.value) return
+  await loginFormRef.value.validate()
+  loading.value = true
 
-  try {
-    // await loginFormRef.value.validate()
-    // loading.value = true
-
-    await userStore.loginAction(loginForm)
-    ElMessage.success('登录成功');
-    router.push({ name: 'HomePage' });
-  } catch (error: any) {
-    ElMessage.error(error.message || '登录失败')
-  }
+  await userStore.loginAction(loginForm)
+  loading.value = false
 }
 </script>
 

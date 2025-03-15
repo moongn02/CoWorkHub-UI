@@ -71,10 +71,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
+import { register } from '@/api/auth'
+import type { RegisterData } from '@/types/auth'
 
-interface RegisterFormData {
-  username: string
-  password: string
+interface RegisterFormData extends RegisterData {
   confirmPassword: string
 }
 
@@ -121,16 +121,15 @@ const handleRegister = async () => {
     await registerFormRef.value.validate()
     loading.value = true
 
-    // 这里添加注册逻辑
-    // 模拟注册请求
-    setTimeout(() => {
-      loading.value = false
-      ElMessage.success('注册成功，请登录')
-      router.push('/login')
-    }, 1500)
+    const { confirmPassword, ...registerData } = registerForm
+    await register(registerData)
+
+    ElMessage.success('注册成功，请登录')
+    router.push('/login')
   } catch (error: any) {
+    ElMessage.error(error.response?.data?.message || '注册失败')
+  } finally {
     loading.value = false
-    ElMessage.error(error.message || '注册失败')
   }
 }
 </script>

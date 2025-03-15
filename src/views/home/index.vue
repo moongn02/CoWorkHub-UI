@@ -95,7 +95,8 @@
                     </el-button>
                   </div>
                   <div class="item-content">
-                    <p class="memo-content">{{ truncateContent(memo.content) }}</p>
+                    <p class="memo-content">{{ memo.content }}</p>
+<!--                     truncateContent(memo.content)-->
                     <p class="item-info">
                       <span>记录时间: {{ memo.createTime }}</span>
                     </p>
@@ -335,10 +336,10 @@ const getStatusType = (status: string) => {
   return types[status] || 'info'
 }
 
-// 截断内容
-const truncateContent = (content: string, length = 50) => {
-  return content.length > length ? content.slice(0, length) + '...' : content
-}
+// // 截断内容
+// const truncateContent = (content: string, length = 50) => {
+//   return content.length > length ? content.slice(0, length) + '...' : content
+// }
 
 // 查看完整备忘
 const viewFullMemo = (memo: Memo) => {

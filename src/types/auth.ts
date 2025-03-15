@@ -4,6 +4,11 @@ export interface LoginData {
   password: string
 }
 
+export interface RegisterData {
+  username: string
+  password: string
+}
+
 export interface ResetPasswordData {
   emailOrPhone: string;
   newPassword: string;
@@ -14,11 +19,9 @@ export interface ResetPasswordData {
 export interface UserInfo {
   id: number
   username: string
+  realName?: string
   email?: string
   phone?: string
-  avatar?: string
-  roles?: string[]
-  permissions?: string[]
 }
 
 // 登录响应接口

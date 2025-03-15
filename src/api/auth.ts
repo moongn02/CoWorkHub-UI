@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { LoginData, ResetPasswordData} from '@/types/auth'
+import type { LoginData, RegisterData, ResetPasswordData} from '@/types/auth'
 
 // 登录接口
 export function login(data: LoginData) {
@@ -8,6 +8,15 @@ export function login(data: LoginData) {
     method: 'post',
     data,
   });
+}
+
+// 注册
+export function register(data: RegisterData) {
+  return request({
+    url: '/api/auth/register',
+    method: 'post',
+    data
+  })
 }
 
 // 发送验证码
@@ -33,13 +42,5 @@ export function logout() {
   return request({
     url: '/api/auth/logout',
     method: 'post'
-  })
-}
-
-// 获取用户信息接口
-export function getUserInfo() {
-  return request({
-    url: '/api/auth/info',
-    method: 'get'
   })
 }

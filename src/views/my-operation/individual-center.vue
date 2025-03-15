@@ -152,11 +152,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import Layout from '@/components/Layout.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { updateUserInfo, changePassword } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore();
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
 const editFormRef = ref<FormInstance>()
@@ -164,25 +167,32 @@ const passwordFormRef = ref<FormInstance>()
 
 // 用户信息
 const userInfo = reactive({
-  username: 'johndoe',
-  realName: '张三',
-  phone: '13800138000',
-  email: 'zhangsan@example.com',
-  birthday: '1990-01-01',
-  gender: '男',
-  department: '技术部',
-  supervisor: '李四'
+  username: '',
+  realName: '',
+  phone: '',
+  email: '',
+  birthday: '',
+  gender: '',
+  department: '',
+  supervisor: ''
 })
+
+// 在组件挂载时获取用户信息
+onMounted(() => {
+  fetchUserInfo()
+})
+
+// 获取用户信息
+const fetchUserInfo = async () => {
+  const response = await userStore.getUserInfoAction()
+  if (response) {
+    Object.assign(userInfo, response)
+    Object.assign(editForm, response)
+  }
+}
 
 // 编辑表单数据
 const editForm = reactive({ ...userInfo })
-
-// 密码表单数据
-const passwordForm = reactive({
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: ''
-})
 
 // 编辑表单验证规则
 const editRules = reactive<FormRules>({
@@ -211,6 +221,30 @@ const editRules = reactive<FormRules>({
   ]
 })
 
+// 编辑个人信息
+const handleEditSubmit = async () => {
+  if (!editFormRef.value) return
+  await editFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        await updateUserInfo(editForm)
+        Object.assign(userInfo, editForm)
+        ElMessage.success('保存成功')
+        showEditDialog.value = false
+      } catch (error) {
+        ElMessage.error('保存失败')
+      }
+    }
+  })
+}
+
+// 密码表单数据
+const passwordForm = reactive({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+})
+
 // 密码验证规则
 const passwordRules = reactive<FormRules>({
   currentPassword: [
@@ -235,31 +269,27 @@ const passwordRules = reactive<FormRules>({
   ]
 })
 
-// 提交编辑表单
-const handleEditSubmit = async () => {
-  if (!editFormRef.value) return
-  await editFormRef.value.validate((valid) => {
-    if (valid) {
-      // TODO: 实现保存逻辑
-      Object.assign(userInfo, editForm)
-      ElMessage.success('保存成功')
-      showEditDialog.value = false
-    }
-  })
-}
-
 // 修改密码
 const handlePasswordChange = async () => {
   if (!passwordFormRef.value) return
-  await passwordFormRef.value.validate((valid) => {
+  await passwordFormRef.value.validate(async (valid) => {
     if (valid) {
-      // TODO: 实现密码修改逻辑
-      ElMessage.success('密码修改成功')
-      showPasswordDialog.value = false
-      // 重置密码表单
-      passwordForm.currentPassword = ''
-      passwordForm.newPassword = ''
-      passwordForm.confirmPassword = ''
+      try {
+        const passwordData = {
+          username: userInfo.username,
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword
+        }
+        await changePassword(passwordData)
+        ElMessage.success('密码修改成功')
+        showPasswordDialog.value = false
+        // 重置密码表单
+        passwordForm.currentPassword = ''
+        passwordForm.newPassword = ''
+        passwordForm.confirmPassword = ''
+      } catch (error) {
+        ElMessage.error('密码修改失败')
+      }
     }
   })
 }

@@ -1,7 +1,5 @@
 import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router'
 import { menuList } from '@/config/menu'
-import { getToken, removeToken } from '@/utils/auth'
-import { jwtDecode } from 'jwt-decode'
 
 // 动态导入组件
 const modules = import.meta.glob('../views/**/*.vue')
@@ -29,6 +27,12 @@ const baseRoutes: RouteRecordRaw[] = [
     name: 'ForgotPassword',
     component: () => import('@/views/forgot-password/index.vue'),
     meta: { requiresAuth: false }
+  },
+  {
+    path: '/home',
+    name: 'HomePage',
+    component: () => import('@/views/home/index.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -80,55 +84,6 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes
-})
-
-// Token 验证
-const validateToken = (token: string): boolean => {
-  try {
-    const decodedToken: any = jwtDecode(token)
-    const currentTime = Date.now() / 1000
-    return decodedToken.exp > currentTime
-  } catch (error) {
-    console.error('Token validation error:', error)
-    return false
-  }
-}
-
-// 处理认证失败
-const handleAuthFailure = (next: any) => {
-  removeToken()
-  next({
-    name: 'login',
-    query: { redirect: router.currentRoute.value.fullPath }
-  })
-}
-
-// 路由守卫
-router.beforeEach(async (to, from, next) => {
-  const token = getToken()
-
-  // 处理需要认证的路由
-  if (to.meta.requiresAuth) {
-    if (!token || !validateToken(token)) {
-      handleAuthFailure(next)
-      return
-    }
-    next()
-    return
-  }
-
-  // 处理不需要认证的路由
-  if (token && validateToken(token) && to.name === 'login') {
-    next({ name: 'HomePage' })
-    return
-  }
-
-  next()
-})
-
-// 路由错误处理
-router.onError((error) => {
-  console.error('Router error:', error)
 })
 
 export default router 
