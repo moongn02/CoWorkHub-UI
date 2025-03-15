@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { login, logout } from '@/api/auth'
-
 import type { LoginData} from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
@@ -46,10 +45,8 @@ export const useUserStore = defineStore('user', () => {
 
   // 获取用户信息
   const getUserInfoAction = async () => {
-    console.log(userInfo)
-    const res = await getUserInfo(userInfo.value.id)
+    const res = await getUserInfo()
 
-    debugger
     const { success, data } = res.data
     if (success) {
       userInfo.value = data
@@ -59,9 +56,22 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 重置 token
+  const resetToken = () => {
+    token.value = ''
+    userInfo.value = {}
+    removeToken()
+  }
+
+  // 登出
+  const logout = () => {
+    resetToken()
+  }
+
   return {
     token,
     userInfo,
+    resetToken,
     loginAction,
     logoutAction,
     getUserInfoAction

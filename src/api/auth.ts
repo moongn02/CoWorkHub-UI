@@ -4,7 +4,7 @@ import type { LoginData, RegisterData, ResetPasswordData} from '@/types/auth'
 // 登录接口
 export function login(data: LoginData) {
   return request({
-    url: `${import.meta.env.VITE_API_URL}/api/auth/login`, // 使用环境变量
+    url: '/api/auth/login',
     method: 'post',
     data,
   });

@@ -1,11 +1,10 @@
 import request from '@/utils/request'
 
 // 获取用户信息
-export const getUserInfo = (id: number) => {
+export const getUserInfo = () => {
     return request({
         url: `/api/user/info`,
         method: 'get',
-        params: {id}
     })
 }
 
