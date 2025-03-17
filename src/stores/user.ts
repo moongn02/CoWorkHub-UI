@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { login, logout } from '@/api/auth'
+import {login, logout, register} from '@/api/auth'
 import type { LoginData} from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
@@ -25,14 +25,26 @@ export const useUserStore = defineStore('user', () => {
       await router.push({name: 'HomePage'});
     } else {
       ElMessage.error(res.data.message)
-      // await router.push({name: 'HomePage'});
+    }
+  }
+
+  // 注册
+  const registerAction = async (registerData: LoginData) => {
+    const res = await register(registerData)
+    const success = res.data.success
+    debugger
+    if (success) {
+      ElMessage.success('注册成功，请登录');
+      await router.push('/login');
+    } else {
+      ElMessage.error(res.data.message)
     }
   }
 
   // 登出
   const logoutAction = async () => {
     try {
-      await logout()
+      resetToken()
     } catch (error) {
       console.error('登出请求失败:', error)
     } finally {
@@ -63,16 +75,12 @@ export const useUserStore = defineStore('user', () => {
     removeToken()
   }
 
-  // 登出
-  const logout = () => {
-    resetToken()
-  }
-
   return {
     token,
     userInfo,
     resetToken,
     loginAction,
+    registerAction,
     logoutAction,
     getUserInfoAction
   }

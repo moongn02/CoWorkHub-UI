@@ -68,17 +68,16 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { register } from '@/api/auth'
 import type { RegisterData } from '@/types/auth'
+import {useUserStore} from "@/stores/user";
+const userStore = useUserStore()
 
 interface RegisterFormData extends RegisterData {
   confirmPassword: string
 }
 
-const router = useRouter()
 const registerFormRef = ref<FormInstance>()
 const loading = ref(false)
 
@@ -116,21 +115,12 @@ const registerRules = reactive<FormRules>({
 
 const handleRegister = async () => {
   if (!registerFormRef.value) return
+  await registerFormRef.value.validate()
+  loading.value = true
 
-  try {
-    await registerFormRef.value.validate()
-    loading.value = true
-
-    const { confirmPassword, ...registerData } = registerForm
-    await register(registerData)
-
-    ElMessage.success('注册成功，请登录')
-    router.push('/login')
-  } catch (error: any) {
-    ElMessage.error(error.response?.data?.message || '注册失败')
-  } finally {
-    loading.value = false
-  }
+  const { confirmPassword, ...registerData } = registerForm
+  await userStore.registerAction(registerData)
+  loading.value = false
 }
 </script>
 
