@@ -5,7 +5,7 @@ import type { LoginData} from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
 import { ElMessage } from 'element-plus'
-import {getUserInfo} from "@/api/user";
+import {getEditUserInfo, getUserInfo} from "@/api/user";
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
@@ -64,7 +64,20 @@ export const useUserStore = defineStore('user', () => {
       userInfo.value = data
       return userInfo.value
     } else {
-      ElMessage.error('获取用户信息失败')
+      ElMessage.error(res.data.message)
+    }
+  }
+
+  // 获取编辑弹窗展示的用户信息
+  const getEditUserInfoAction = async () => {
+    const res = await getEditUserInfo()
+
+    const { success, data } = res.data
+    if (success) {
+      userInfo.value = data
+      return userInfo.value
+    } else {
+      ElMessage.error(res.data.message)
     }
   }
 
@@ -82,6 +95,7 @@ export const useUserStore = defineStore('user', () => {
     loginAction,
     registerAction,
     logoutAction,
-    getUserInfoAction
+    getUserInfoAction,
+    getEditUserInfoAction
   }
 })

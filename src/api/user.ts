@@ -8,11 +8,19 @@ export const getUserInfo = () => {
     })
 }
 
+// 获取编辑弹窗展示的用户信息
+export function getEditUserInfo() {
+    return request({
+        url: `api/user/edit`,
+        method: 'get'
+    });
+}
+
 // 更新用户信息
 export const updateUserInfo = (data: any) => {
     return request({
-        url: '/api/user/update',
-        method: 'put',
+        url: '/api/user/edit',
+        method: 'post',
         data
     })
 }

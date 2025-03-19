@@ -82,18 +82,32 @@
       </el-form-item>
       <el-form-item label="性别" prop="gender">
         <el-radio-group v-model="editForm.gender">
-          <el-radio label="男">男</el-radio>
-          <el-radio label="女">女</el-radio>
+          <el-radio :label="0">男</el-radio>
+          <el-radio :label="1">女</el-radio>
         </el-radio-group>
       </el-form-item>
 
       <!-- 工作信息 -->
       <h4 class="dialog-section-title">工作信息</h4>
-      <el-form-item label="部门" prop="department">
-        <el-input v-model="editForm.department" />
+      <el-form-item label="部门" prop="departmentId">
+        <el-select v-model="editForm.departmentId" placeholder="请选择部门">
+          <el-option
+              v-for="item in departmentOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+          />
+        </el-select>
       </el-form-item>
-      <el-form-item label="直属上级" prop="supervisor">
-        <el-input v-model="editForm.supervisor" />
+      <el-form-item label="直属上级" prop="supervisorId">
+        <el-select v-model="editForm.supervisorId" placeholder="请选择直属上级">
+          <el-option
+              v-for="item in userOptions"
+              :key="item.id"
+              :label="item.realName"
+              :value="item.id"
+          />
+        </el-select>
       </el-form-item>
     </el-form>
     <template #footer>
@@ -165,6 +179,10 @@ const showPasswordDialog = ref(false)
 const editFormRef = ref<FormInstance>()
 const passwordFormRef = ref<FormInstance>()
 
+// 部门和用户选项
+const departmentOptions = ref<Array<{ id: number, name: string }>>([])
+const userOptions = ref<Array<{ id: number, realName: string }>>([])
+
 // 用户信息
 const userInfo = reactive({
   username: '',
@@ -174,12 +192,26 @@ const userInfo = reactive({
   birthday: '',
   gender: '',
   department: '',
-  supervisor: ''
+  supervisor: null
 })
 
-// 在组件挂载时获取用户信息
+// 编辑弹窗用户信息
+const editUserInfo = reactive({
+  username: '',
+  realName: '',
+  phone: '',
+  email: '',
+  birthday: '',
+  gender: 0,
+  departmentId: null,
+  supervisorId: null
+})
+
 onMounted(() => {
   fetchUserInfo()
+  fetchUserEditInfo()
+  fetchDepartments()
+  fetchUsers()
 })
 
 // 获取用户信息
@@ -187,12 +219,35 @@ const fetchUserInfo = async () => {
   const response = await userStore.getUserInfoAction()
   if (response) {
     Object.assign(userInfo, response)
+  }
+}
+
+// 获取编辑弹窗展示的用户信息
+const fetchUserEditInfo = async () => {
+  const response = await userStore.getEditUserInfoAction()
+  if (response) {
     Object.assign(editForm, response)
   }
 }
 
+// 获取所有部门数据
+const fetchDepartments = async () => {
+  const response = await getDepartments()
+  if (response) {
+    Object.assign(departmentOptions, response)
+  }
+}
+
+// 获取所有用户数据
+const fetchUsers = async () => {
+  const response = await userStore.getUserListAction()
+  if (response) {
+    Object.assign(departmentOptions, response)
+  }
+}
+
 // 编辑表单数据
-const editForm = reactive({ ...userInfo })
+const editForm = reactive({ ...editUserInfo })
 
 // 编辑表单验证规则
 const editRules = reactive<FormRules>({
@@ -213,11 +268,11 @@ const editRules = reactive<FormRules>({
   gender: [
     { required: true, message: '请选择性别', trigger: 'change' }
   ],
-  department: [
-    { required: true, message: '请输入部门', trigger: 'blur' }
+  departmentId: [
+    { required: true, message: '请选择部门', trigger: 'change' }
   ],
-  supervisor: [
-    { required: true, message: '请输入直属上级', trigger: 'blur' }
+  supervisorId: [
+    { required: true, message: '请选择直属上级', trigger: 'change' }
   ]
 })
 
@@ -231,6 +286,8 @@ const handleEditSubmit = async () => {
         Object.assign(userInfo, editForm)
         ElMessage.success('保存成功')
         showEditDialog.value = false
+        // 刷新用户信息
+        fetchUserInfo()
       } catch (error) {
         ElMessage.error('保存失败')
       }
