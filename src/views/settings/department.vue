@@ -16,16 +16,19 @@
                 v-model="searchKeyword"
                 placeholder="搜索部门"
                 class="white-bg-input"
+                @keyup.enter="handleSearch"
             />
-            <el-select v-model="departmentStatus" placeholder="部门状态" class="white-bg-input">
+            <el-select v-model="departmentStatus" placeholder="部门状态" class="white-bg-input" @change="handleStatusChange">
               <el-option label="全部" value="" />
-              <el-option label="启用" value="ENABLE" />
-              <el-option label="禁用" value="DISABLE" />
+              <el-option label="启用" :value="1" />
+              <el-option label="禁用" :value="0" />
             </el-select>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </div>
 
           <!-- Department table -->
-          <el-table :data="filteredDepartments" style="width: 100%" v-loading="loading">
+          <el-table :data="departmentList" style="width: 100%" v-loading="loading">
             <el-table-column prop="id" label="ID" width="150" />
             <el-table-column label="部门名称" min-width="200">
               <template #default="scope">
@@ -37,7 +40,7 @@
             <el-table-column label="部门简称" min-width="200">
               <template #default="scope">
                 <el-tooltip :content="scope.row.shortName" placement="top">
-                  <span>{{ truncateText(scope.row.shortName, 8) }}</span>
+                  <span>{{ truncateText(scope.row.shortName || '', 8) }}</span>
                 </el-tooltip>
               </template>
             </el-table-column>
@@ -81,17 +84,17 @@
       width="30%"
       center
   >
-    <el-form :model="departmentForm" label-width="100px">
-      <el-form-item label="部门名称">
+    <el-form :model="departmentForm" label-width="100px" :rules="formRules" ref="departmentFormRef">
+      <el-form-item label="部门名称" prop="name">
         <el-input v-model="departmentForm.name" maxlength="30" show-word-limit />
       </el-form-item>
-      <el-form-item label="部门简称">
+      <el-form-item label="部门简称" prop="shortName">
         <el-input v-model="departmentForm.shortName" maxlength="10" show-word-limit />
       </el-form-item>
-      <el-form-item label="状态">
+      <el-form-item label="状态" prop="status">
         <el-select v-model="departmentForm.status">
-          <el-option label="启用" value="ENABLE" />
-          <el-option label="禁用" value="DISABLE" />
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -129,124 +132,196 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useDeptStore } from '@/stores/department'
+import type { FormInstance } from 'element-plus'
+import Department from "@/views/settings/department.vue";
 
-// Department data
-const departments = ref([
-  { id: 1, name: '技术部', shortName: '技术', status: 'ENABLE' },
-  { id: 2, name: '市场部', shortName: '市场', status: 'ENABLE' },
-  { id: 3, name: '财务部', shortName: '财务', status: 'DISABLE' },
-])
+// 使用部门状态管理
+const deptStore = useDeptStore()
 
-const loading = ref(false)
+// 表单引用
+const departmentFormRef = ref<FormInstance>()
+
+// 表单验证规则
+const formRules = {
+  name: [
+    { required: true, message: '请输入部门名称', trigger: 'blur' },
+    { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
+  ],
+  shortName: [
+    { required: true, message: '请输入部门简称', trigger: 'blur' },
+    { max: 10, message: '长度不能超过 10 个字符', trigger: 'blur' }
+  ],
+  status: [
+    { required: true, message: '请选择部门状态', trigger: 'change' }
+  ]
+}
+
+// 分页和筛选相关
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(departments.value.length)
 const departmentStatus = ref('')
 const searchKeyword = ref('')
+
+// 计算属性：获取部门列表和总数
+const departmentList = computed(() => deptStore.departmentList)
+const total = computed(() => deptStore.pagination.total)
+const loading = computed(() => deptStore.loading)
 
 // Department modal related refs
 const departmentModalVisible = ref(false)
 const viewDepartmentModalVisible = ref(false)
 const isEditing = ref(false)
-const departmentForm = reactive({
+interface Department {
+  id: string | number | null;
+  name: string;
+  shortName: string;
+  status: number;
+}
+
+// 修改部门表单的初始化
+const departmentForm = reactive<Department>({
   id: null,
   name: '',
   shortName: '',
-  status: 'ENABLE',
+  status: 1, // 默认启用，值为1
 })
-const selectedDepartment = ref(null)
+const selectedDepartment = ref<Department | null>(null)
 
-// Filter departments based on search keyword and status
-const filteredDepartments = computed(() => {
-  let filtered = departments.value
-
-  if (departmentStatus.value) {
-    filtered = filtered.filter(dept => dept.status === departmentStatus.value)
-  }
-
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    filtered = filtered.filter(dept =>
-        dept.name.toLowerCase().includes(keyword) ||
-        dept.shortName.toLowerCase().includes(keyword)
-    )
-  }
-
-  total.value = filtered.length
-  return filtered.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
+// 初始化加载数据
+onMounted(async () => {
+  await fetchDepartments()
 })
 
-const handleCurrentChange = (val: number) => {
+// 获取部门列表
+const fetchDepartments = async () => {
+  const query = {
+    status: departmentStatus.value !== '' ? departmentStatus.value : undefined,
+    keyword: searchKeyword.value || undefined
+  }
+  await deptStore.getDepartmentsAction(currentPage.value, pageSize.value, query)
+}
+
+// 处理分页变化
+const handleCurrentChange = async (val: number) => {
   currentPage.value = val
+  await fetchDepartments()
 }
 
-const handleSizeChange = (val: number) => {
+const handleSizeChange = async (val: number) => {
   pageSize.value = val
+  currentPage.value = 1 // 重置到第一页
+  await fetchDepartments()
 }
 
-const getStatusType = (status: string) => {
-  const types = {
-    ENABLE: 'success',
-    DISABLE: 'danger'
-  }
-  return types[status] || 'info'
+// 处理状态筛选变化
+const handleStatusChange = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchDepartments()
 }
 
-const getStatusLabel = (status: string) => {
-  const labels = {
-    ENABLE: '启用',
-    DISABLE: '禁用',
-  }
-  return labels[status] || '未知'
+// 搜索部门
+const handleSearch = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchDepartments()
 }
 
+// 重置搜索条件
+const resetSearch = async () => {
+  searchKeyword.value = ''
+  departmentStatus.value = ''
+  currentPage.value = 1
+  await fetchDepartments()
+}
+
+// 获取状态类型和标签
+const getStatusType = (status: number) => {
+  return status === 1 ? 'success' : 'danger'
+}
+
+const getStatusLabel = (status: number) => {
+  return status === 1 ? '启用' : '禁用'
+}
+
+// 文本截断
 const truncateText = (text: string, maxLength: number) => {
+  if (!text) return ''
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength) + '...'
 }
 
+// 显示添加部门模态框
 const showAddDepartmentModal = () => {
   isEditing.value = false
   departmentForm.id = null
   departmentForm.name = ''
   departmentForm.shortName = ''
-  departmentForm.status = 'ENABLE'
+  departmentForm.status = 1 // 默认启用，值为1
   departmentModalVisible.value = true
 }
 
-const editDepartment = (department) => {
+// 编辑部门
+const editDepartment = (department: any) => {
   isEditing.value = true
   Object.assign(departmentForm, department)
   departmentModalVisible.value = true
 }
 
-const viewDepartment = (department) => {
-  selectedDepartment.value = department
-  viewDepartmentModalVisible.value = true
-}
-
-const saveDepartment = () => {
-  if (isEditing.value) {
-    const index = departments.value.findIndex(dept => dept.id === departmentForm.id)
-    if (index !== -1) {
-      departments.value[index] = { ...departmentForm }
-      ElMessage.success('部门已更新')
+// 查看部门详情
+const viewDepartment = async (department: any) => {
+  // 如果需要获取更详细的部门信息
+  try {
+    const detailData = await deptStore.getDepartmentDetailAction(department.id)
+    if (detailData) {
+      selectedDepartment.value = detailData
+    } else {
+      selectedDepartment.value = department
     }
-  } else {
-    const newDepartment = {
-      ...departmentForm,
-      id: departments.value.length + 1,
-    }
-    departments.value.push(newDepartment)
-    ElMessage.success('部门已添加')
+    viewDepartmentModalVisible.value = true
+  } catch (error) {
+    console.error('获取部门详情失败', error)
+    ElMessage.error('获取部门详情失败')
   }
-  departmentModalVisible.value = false
 }
 
-const deleteDepartment = (department) => {
+// 保存部门（添加或更新）
+const saveDepartment = async () => {
+  if (!departmentFormRef.value) return
+
+  await departmentFormRef.value.validate(async (valid) => {
+    if (valid) {
+      if (isEditing.value && departmentForm.id !== null) {
+        // 更新部门
+        const success = await deptStore.updateDepartmentAction(departmentForm.id, {
+          name: departmentForm.name,
+          shortName: departmentForm.shortName,
+          status: departmentForm.status
+        })
+        if (success) {
+          departmentModalVisible.value = false
+          await fetchDepartments() // 刷新数据
+        }
+      } else {
+        // 添加部门
+        const success = await deptStore.addDepartmentAction({
+          name: departmentForm.name,
+          shortName: departmentForm.shortName,
+          status: departmentForm.status
+        })
+        if (success) {
+          departmentModalVisible.value = false
+          await fetchDepartments() // 刷新数据
+        }
+      }
+    }
+  })
+}
+
+// 删除部门
+const deleteDepartment = (department: any) => {
   ElMessageBox.confirm(
       '确定要删除这个部门吗？',
       '警告',
@@ -255,11 +330,11 @@ const deleteDepartment = (department) => {
         cancelButtonText: '取消',
         type: 'warning',
       }
-  ).then(() => {
-    const index = departments.value.findIndex(d => d.id === department.id)
-    if (index !== -1) {
-      departments.value.splice(index, 1)
+  ).then(async () => {
+    const success = await deptStore.deleteDepartmentAction(department.id)
+    if (success) {
       ElMessage.success('部门已删除')
+      await fetchDepartments() // 刷新数据
     }
   }).catch(() => {
     ElMessage.info('已取消删除')
