@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
     getDepartmentList,
+    getPagingDepartmentList,
     getDepartmentDetail,
     createDepartment,
     updateDepartment,
@@ -23,8 +24,21 @@ export const useDeptStore = defineStore('department', () => {
     const loading = ref<boolean>(false)
     const searchKeyword = ref<string>('')
 
+    // 获取有效部门的列表
+    const getDepartmentListAction = async () => {
+        const res = await getDepartmentList()
+        const { success, data, message }= res.data
+        if (success) {
+            departmentList.value = data || []
+            return departmentList.value
+        } else {
+            ElMessage.error(message || '部门数据获取失败，请重试')
+            return null
+        }
+    }
+
     // 获取部门列表（带分页）
-    const getDepartmentsAction = async (page = 1, pageSize = 10, query = {}) => {
+    const getPagingDepartmentListAction = async (page = 1, pageSize = 10, query = {}) => {
         loading.value = true
         try {
             const params: DepartmentQuery = {
@@ -33,7 +47,7 @@ export const useDeptStore = defineStore('department', () => {
                 ...query
             }
 
-            const res = await getDepartmentList(params)
+            const res = await getPagingDepartmentList(params)
             const { success, data, message } = res.data
 
             if (success) {
@@ -123,7 +137,7 @@ export const useDeptStore = defineStore('department', () => {
             if (success) {
                 ElMessage.success('添加部门成功')
                 // 刷新当前页面的数据
-                await getDepartmentsAction(pagination.value.currentPage, pagination.value.pageSize)
+                await getPagingDepartmentListAction(pagination.value.currentPage, pagination.value.pageSize)
                 return true
             } else {
                 ElMessage.error(message || '添加部门失败')
@@ -148,7 +162,7 @@ export const useDeptStore = defineStore('department', () => {
             if (success) {
                 ElMessage.success('修改部门成功')
                 // 刷新当前页面的数据
-                await getDepartmentsAction(pagination.value.currentPage, pagination.value.pageSize)
+                await getPagingDepartmentListAction(pagination.value.currentPage, pagination.value.pageSize)
                 return true
             } else {
                 ElMessage.error(message || '修改部门失败')
@@ -177,7 +191,7 @@ export const useDeptStore = defineStore('department', () => {
                     ? pagination.value.currentPage - 1
                     : pagination.value.currentPage
 
-                await getDepartmentsAction(currentPage, pagination.value.pageSize)
+                await getPagingDepartmentListAction(currentPage, pagination.value.pageSize)
                 return true
             } else {
                 ElMessage.error(message || '删除部门失败')
@@ -208,7 +222,8 @@ export const useDeptStore = defineStore('department', () => {
         pagination,
         loading,
         searchKeyword,
-        getDepartmentsAction,
+        getDepartmentListAction,
+        getPagingDepartmentListAction,
         searchDepartmentsAction,
         getDepartmentDetailAction,
         addDepartmentAction,

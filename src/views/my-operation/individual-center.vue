@@ -89,22 +89,12 @@
 
       <!-- 工作信息 -->
       <h4 class="dialog-section-title">工作信息</h4>
-      <el-form-item label="部门" prop="departmentId">
-        <el-select v-model="editForm.departmentId" placeholder="请选择部门">
+      <el-form-item label="部门" prop="deptId">
+        <el-select v-model="editForm.deptId" placeholder="请选择部门">
           <el-option
               v-for="item in departmentOptions"
               :key="item.id"
               :label="item.name"
-              :value="item.id"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="直属上级" prop="supervisorId">
-        <el-select v-model="editForm.supervisorId" placeholder="请选择直属上级">
-          <el-option
-              v-for="item in userOptions"
-              :key="item.id"
-              :label="item.realName"
               :value="item.id"
           />
         </el-select>
@@ -172,8 +162,10 @@ import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { updateUserInfo, changePassword } from '@/api/user'
 import { useUserStore } from '@/stores/user'
+import {useDeptStore} from "@/stores/department";
 
 const userStore = useUserStore();
+const deptStore = useDeptStore();
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
 const editFormRef = ref<FormInstance>()
@@ -203,15 +195,13 @@ const editUserInfo = reactive({
   email: '',
   birthday: '',
   gender: 0,
-  departmentId: null,
-  supervisorId: null
+  deptId: null,
 })
 
 onMounted(() => {
   fetchUserInfo()
   fetchUserEditInfo()
   fetchDepartments()
-  fetchUsers()
 })
 
 // 获取用户信息
@@ -232,16 +222,13 @@ const fetchUserEditInfo = async () => {
 
 // 获取所有部门数据
 const fetchDepartments = async () => {
-  const response = await getDepartments()
-  if (response) {
-    Object.assign(departmentOptions, response)
-  }
-}
+  const response = await deptStore.getDepartmentListAction()
+  if (response && response.length > 0) {
+    departmentOptions.value = response.map(item => ({
+      id: item.id,
+      name: item.name
+    }));
 
-// 获取所有用户数据
-const fetchUsers = async () => {
-  const response = await userStore.getUserListAction()
-  if (response) {
     Object.assign(departmentOptions, response)
   }
 }
