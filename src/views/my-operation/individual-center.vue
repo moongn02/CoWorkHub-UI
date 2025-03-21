@@ -86,19 +86,6 @@
           <el-radio :label="1">女</el-radio>
         </el-radio-group>
       </el-form-item>
-
-      <!-- 工作信息 -->
-      <h4 class="dialog-section-title">工作信息</h4>
-      <el-form-item label="部门" prop="deptId">
-        <el-select v-model="editForm.deptId" placeholder="请选择部门">
-          <el-option
-              v-for="item in departmentOptions"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-          />
-        </el-select>
-      </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
@@ -165,15 +152,10 @@ import { useUserStore } from '@/stores/user'
 import {useDeptStore} from "@/stores/department";
 
 const userStore = useUserStore();
-const deptStore = useDeptStore();
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
 const editFormRef = ref<FormInstance>()
 const passwordFormRef = ref<FormInstance>()
-
-// 部门和用户选项
-const departmentOptions = ref<Array<{ id: number, name: string }>>([])
-const userOptions = ref<Array<{ id: number, realName: string }>>([])
 
 // 用户信息
 const userInfo = reactive({
@@ -195,13 +177,11 @@ const editUserInfo = reactive({
   email: '',
   birthday: '',
   gender: 0,
-  deptId: null,
 })
 
 onMounted(() => {
   fetchUserInfo()
   fetchUserEditInfo()
-  fetchDepartments()
 })
 
 // 获取用户信息
@@ -217,19 +197,6 @@ const fetchUserEditInfo = async () => {
   const response = await userStore.getEditUserInfoAction()
   if (response) {
     Object.assign(editForm, response)
-  }
-}
-
-// 获取所有部门数据
-const fetchDepartments = async () => {
-  const response = await deptStore.getDepartmentListAction()
-  if (response && response.length > 0) {
-    departmentOptions.value = response.map(item => ({
-      id: item.id,
-      name: item.name
-    }));
-
-    Object.assign(departmentOptions, response)
   }
 }
 
@@ -254,12 +221,6 @@ const editRules = reactive<FormRules>({
   ],
   gender: [
     { required: true, message: '请选择性别', trigger: 'change' }
-  ],
-  departmentId: [
-    { required: true, message: '请选择部门', trigger: 'change' }
-  ],
-  supervisorId: [
-    { required: true, message: '请选择直属上级', trigger: 'change' }
   ]
 })
 
