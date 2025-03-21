@@ -147,9 +147,7 @@ import { ref, reactive, onMounted } from 'vue'
 import Layout from '@/components/Layout.vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage } from 'element-plus'
-import { updateUserInfo, changePassword } from '@/api/user'
 import { useUserStore } from '@/stores/user'
-import {useDeptStore} from "@/stores/department";
 
 const userStore = useUserStore();
 const showEditDialog = ref(false)
@@ -227,20 +225,13 @@ const editRules = reactive<FormRules>({
 // 编辑个人信息
 const handleEditSubmit = async () => {
   if (!editFormRef.value) return
-  await editFormRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        await updateUserInfo(editForm)
-        Object.assign(userInfo, editForm)
-        ElMessage.success('保存成功')
-        showEditDialog.value = false
-        // 刷新用户信息
-        fetchUserInfo()
-      } catch (error) {
-        ElMessage.error('保存失败')
-      }
-    }
-  })
+  await editFormRef.value.validate()
+
+  const result = await userStore.updateUserAction(editForm)
+  if (result) {
+    showEditDialog.value = false
+    await fetchUserInfo()
+  }
 }
 
 // 密码表单数据
@@ -277,26 +268,22 @@ const passwordRules = reactive<FormRules>({
 // 修改密码
 const handlePasswordChange = async () => {
   if (!passwordFormRef.value) return
-  await passwordFormRef.value.validate(async (valid) => {
-    if (valid) {
-      try {
-        const passwordData = {
-          username: userInfo.username,
-          currentPassword: passwordForm.currentPassword,
-          newPassword: passwordForm.newPassword
-        }
-        await changePassword(passwordData)
-        ElMessage.success('密码修改成功')
-        showPasswordDialog.value = false
-        // 重置密码表单
-        passwordForm.currentPassword = ''
-        passwordForm.newPassword = ''
-        passwordForm.confirmPassword = ''
-      } catch (error) {
-        ElMessage.error('密码修改失败')
-      }
-    }
-  })
+  await passwordFormRef.value.validate()
+
+  const passwordData = {
+    currentPassword: passwordForm.currentPassword,
+    newPassword: passwordForm.newPassword
+  }
+
+  const result = await userStore.changePasswordAction(passwordData)
+
+  if (result) {
+    showPasswordDialog.value = false
+    // 重置密码表单
+    passwordForm.currentPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+  }
 }
 </script>
 

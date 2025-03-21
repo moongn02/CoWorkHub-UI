@@ -5,7 +5,7 @@ import type { LoginData} from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
 import { ElMessage } from 'element-plus'
-import {getEditUserInfo, getUserInfo} from "@/api/user";
+import {changePassword, getEditUserInfo, getUserInfo, updateUserInfo} from "@/api/user";
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
@@ -32,7 +32,6 @@ export const useUserStore = defineStore('user', () => {
   const registerAction = async (registerData: LoginData) => {
     const res = await register(registerData)
     const success = res.data.success
-    debugger
     if (success) {
       ElMessage.success('注册成功，请登录');
       await router.push('/login');
@@ -81,6 +80,37 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 更新个人信息
+  const updateUserAction = async (updateData: any) => {
+    const res = await updateUserInfo(updateData)
+
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('修改成功')
+      return success
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 修改密码
+  const changePasswordAction = async (passwordData: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
+    const res = await changePassword(passwordData)
+
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('密码修改成功')
+      return success
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
   // 重置 token
   const resetToken = () => {
     token.value = ''
@@ -96,6 +126,8 @@ export const useUserStore = defineStore('user', () => {
     registerAction,
     logoutAction,
     getUserInfoAction,
-    getEditUserInfoAction
+    getEditUserInfoAction,
+    updateUserAction,
+    changePasswordAction
   }
 })

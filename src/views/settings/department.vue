@@ -202,7 +202,7 @@ const fetchDepartments = async () => {
     status: departmentStatus.value !== '' ? departmentStatus.value : undefined,
     keyword: searchKeyword.value || undefined
   }
-  await deptStore.getDepartmentsAction(currentPage.value, pageSize.value, query)
+  await deptStore.getPagingDepartmentListAction(currentPage.value, pageSize.value, query)
 }
 
 // 处理分页变化
