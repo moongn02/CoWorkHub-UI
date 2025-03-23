@@ -29,7 +29,7 @@ export const updateUserInfo = (data: any) => {
 export const changePassword = (data: any) => {
     return request({
         url: '/api/user/change-password',
-        method: 'put',
+        method: 'post',
         data
     })
 }

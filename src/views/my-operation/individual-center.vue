@@ -143,9 +143,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import Layout from '@/components/Layout.vue'
-import type { FormInstance, FormRules } from 'element-plus'
+import {dayjs, type FormInstance, type FormRules} from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
@@ -154,6 +154,12 @@ const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
 const editFormRef = ref<FormInstance>()
 const passwordFormRef = ref<FormInstance>()
+
+watch(showEditDialog, async (newValue) => {
+  if (!newValue) {
+    await fetchUserEditInfo();
+  }
+});
 
 // 用户信息
 const userInfo = reactive({
@@ -226,6 +232,7 @@ const editRules = reactive<FormRules>({
 const handleEditSubmit = async () => {
   if (!editFormRef.value) return
   await editFormRef.value.validate()
+  editForm.birthday = dayjs(editForm.birthday).format('YYYY-MM-DD');
 
   const result = await userStore.updateUserAction(editForm)
   if (result) {
@@ -244,7 +251,8 @@ const passwordForm = reactive({
 // 密码验证规则
 const passwordRules = reactive<FormRules>({
   currentPassword: [
-    { required: true, message: '请输入当前密码', trigger: 'blur' }
+    { required: true, message: '请输入当前密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
   ],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
@@ -252,6 +260,7 @@ const passwordRules = reactive<FormRules>({
   ],
   confirmPassword: [
     { required: true, message: '请确认新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度不能小于6位', trigger: 'blur' },
     {
       validator: (rule, value, callback) => {
         if (value !== passwordForm.newPassword) {
