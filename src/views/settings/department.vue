@@ -18,6 +18,22 @@
                 class="white-bg-input"
                 @keyup.enter="handleSearch"
             />
+            <el-select
+                v-model="parentDepartment"
+                placeholder="上级部门"
+                class="white-bg-input"
+                @change="handleParentChange"
+                filterable
+                clearable
+            >
+              <el-option label="全部" value="" />
+              <el-option
+                  v-for="dept in parentDepartmentOptions"
+                  :key="dept.id"
+                  :label="dept.name"
+                  :value="dept.id"
+              />
+            </el-select>
             <el-select v-model="departmentStatus" placeholder="部门状态" class="white-bg-input" @change="handleStatusChange">
               <el-option label="全部" value="" />
               <el-option label="启用" :value="1" />
@@ -37,25 +53,26 @@
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column label="部门简称" min-width="200">
+            <el-table-column prop="leaderName" label="部门负责人" min-width="180" />
+            <el-table-column prop="parentName" label="上级部门" min-width="180" />
+            <el-table-column label="状态" width="150">
               <template #default="scope">
-                <el-tooltip :content="scope.row.shortName" placement="top">
-                  <span>{{ truncateText(scope.row.shortName || '', 8) }}</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column prop="status" label="状态" width="150">
-              <template #default="scope">
-                <el-tag :type="getStatusType(scope.row.status)">
-                  {{ getStatusLabel(scope.row.status) }}
+                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                  {{ scope.row.statusText }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewDepartment(scope.row)" icon="View" circle />
-                <el-button type="warning" @click="editDepartment(scope.row)" icon="Edit" circle />
-                <el-button type="danger" @click="deleteDepartment(scope.row)" icon="Delete" circle />
+                <el-button type="primary" @click="viewDepartment(scope.row)" icon="View" circle title="查看" />
+                <el-button
+                    :type="scope.row.status === 1 ? 'danger' : 'success'"
+                    @click="toggleDepartmentStatus(scope.row)"
+                    :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
+                    circle
+                    :title="scope.row.status === 1 ? '禁用' : '启用'"
+                />
+                <el-button type="warning" @click="editDepartment(scope.row)" icon="Edit" circle title="编辑" />
               </template>
             </el-table-column>
           </el-table>
@@ -81,21 +98,49 @@
   <el-dialog
       v-model="departmentModalVisible"
       :title="isEditing ? '编辑部门' : '添加部门'"
-      width="30%"
+      width="40%"
       center
   >
-    <el-form :model="departmentForm" label-width="100px" :rules="formRules" ref="departmentFormRef">
+    <el-form :model="departmentForm" label-width="120px" :rules="formRules" ref="departmentFormRef">
       <el-form-item label="部门名称" prop="name">
         <el-input v-model="departmentForm.name" maxlength="30" show-word-limit />
       </el-form-item>
-      <el-form-item label="部门简称" prop="shortName">
-        <el-input v-model="departmentForm.shortName" maxlength="10" show-word-limit />
+      <el-form-item label="部门负责人" prop="leaderId">
+        <el-select v-model="departmentForm.leaderId" placeholder="请选择部门负责人" filterable>
+          <el-option
+              v-for="leader in leaderOptions"
+              :key="leader.id"
+              :label="leader.name"
+              :value="leader.id"
+          />
+        </el-select>
       </el-form-item>
-      <el-form-item label="状态" prop="status">
+      <el-form-item label="上级部门" prop="parentId">
+        <el-select v-model="departmentForm.parentId" placeholder="请选择上级部门" filterable clearable>
+          <el-option label="无上级部门" :value="0" />
+          <el-option
+              v-for="dept in parentDepartmentOptions"
+              :key="dept.id"
+              :label="dept.name"
+              :value="dept.id"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="部门状态" prop="status">
         <el-select v-model="departmentForm.status">
           <el-option label="启用" :value="1" />
           <el-option label="禁用" :value="0" />
         </el-select>
+      </el-form-item>
+      <el-form-item label="部门描述" prop="description">
+        <el-input
+            v-model="departmentForm.description"
+            type="textarea"
+            :rows="4"
+            maxlength="200"
+            show-word-limit
+            placeholder="请输入部门描述信息"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -110,37 +155,54 @@
   <el-dialog
       v-model="viewDepartmentModalVisible"
       title="部门详情"
-      width="30%"
+      width="40%"
       center
       class="department-detail-dialog"
   >
     <div v-if="selectedDepartment" class="department-detail-content">
       <div class="detail-item">
+        <span class="detail-label">部门ID：</span>
+        <span class="detail-value">{{ selectedDepartment.id }}</span>
+      </div>
+      <div class="detail-item">
         <span class="detail-label">部门名称：</span>
         <span class="detail-value">{{ selectedDepartment.name }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">部门简称：</span>
-        <span class="detail-value">{{ selectedDepartment.shortName }}</span>
+        <span class="detail-label">部门负责人：</span>
+        <span class="detail-value">{{ selectedDepartment.leaderName }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">状态：</span>
-        <span class="detail-value">{{ getStatusLabel(selectedDepartment.status) }}</span>
+        <span class="detail-label">上级部门：</span>
+        <span class="detail-value">{{ selectedDepartment.parentName }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">部门状态：</span>
+        <span class="detail-value">
+          <el-tag :type="selectedDepartment.status === 1 ? 'success' : 'danger'" size="small">
+            {{ selectedDepartment.statusText }}
+          </el-tag>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">部门描述：</span>
+        <div class="detail-description">{{ selectedDepartment.description || '暂无描述' }}</div>
       </div>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import Layout from '@/components/Layout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useDeptStore } from '@/stores/department'
-import type { FormInstance } from 'element-plus'
-import Department from "@/views/settings/department.vue";
+import type {FormInstance} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {useDeptStore} from '@/stores/department'
+import {useUserStore} from '@/stores/user'
 
 // 使用部门状态管理
 const deptStore = useDeptStore()
+const userStore = useUserStore()
 
 // 表单引用
 const departmentFormRef = ref<FormInstance>()
@@ -151,9 +213,8 @@ const formRules = {
     { required: true, message: '请输入部门名称', trigger: 'blur' },
     { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
   ],
-  shortName: [
-    { required: true, message: '请输入部门简称', trigger: 'blur' },
-    { max: 10, message: '长度不能超过 10 个字符', trigger: 'blur' }
+  leaderId: [
+    { required: true, message: '请选择部门负责人', trigger: 'change' }
   ],
   status: [
     { required: true, message: '请选择部门状态', trigger: 'change' }
@@ -165,44 +226,73 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const departmentStatus = ref('')
 const searchKeyword = ref('')
+const parentDepartment = ref('')
 
 // 计算属性：获取部门列表和总数
 const departmentList = computed(() => deptStore.departmentList)
 const total = computed(() => deptStore.pagination.total)
 const loading = computed(() => deptStore.loading)
 
+// 部门负责人选项
+const leaderOptions = ref([])
+// 上级部门选项
+const parentDepartmentOptions = ref([])
+
 // Department modal related refs
 const departmentModalVisible = ref(false)
 const viewDepartmentModalVisible = ref(false)
 const isEditing = ref(false)
+
 interface Department {
-  id: string | number | null;
+  id: number | null;
   name: string;
-  shortName: string;
+  leaderId: number | null;
+  leaderName?: string;
+  parentId: number | null;
+  parentName?: string;
   status: number;
+  statusText?: string;
+  description: string;
 }
 
 // 修改部门表单的初始化
 const departmentForm = reactive<Department>({
   id: null,
   name: '',
-  shortName: '',
+  leaderId: null,
+  parentId: null,
   status: 1, // 默认启用，值为1
+  description: ''
 })
 const selectedDepartment = ref<Department | null>(null)
 
 // 初始化加载数据
 onMounted(async () => {
-  await fetchDepartments()
+  await Promise.all([
+    fetchDepartments(),
+    fetchLeaderOptions(),
+    fetchParentDepartmentOptions()
+  ])
 })
 
 // 获取部门列表
 const fetchDepartments = async () => {
   const query = {
     status: departmentStatus.value !== '' ? departmentStatus.value : undefined,
-    keyword: searchKeyword.value || undefined
+    keyword: searchKeyword.value || undefined,
+    parentId: parentDepartment.value || undefined
   }
   await deptStore.getPagingDepartmentListAction(currentPage.value, pageSize.value, query)
+}
+
+// 获取部门负责人选项
+const fetchLeaderOptions = async () => {
+  leaderOptions.value = await userStore.getUsersForLeaderSelection()
+}
+
+// 获取上级部门选项
+const fetchParentDepartmentOptions = async () => {
+  parentDepartmentOptions.value = await deptStore.getParentDepartmentsAction()
 }
 
 // 处理分页变化
@@ -223,6 +313,12 @@ const handleStatusChange = async () => {
   await fetchDepartments()
 }
 
+// 处理上级部门筛选变化
+const handleParentChange = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchDepartments()
+}
+
 // 搜索部门
 const handleSearch = async () => {
   currentPage.value = 1 // 重置到第一页
@@ -233,17 +329,9 @@ const handleSearch = async () => {
 const resetSearch = async () => {
   searchKeyword.value = ''
   departmentStatus.value = ''
+  parentDepartment.value = ''
   currentPage.value = 1
   await fetchDepartments()
-}
-
-// 获取状态类型和标签
-const getStatusType = (status: number) => {
-  return status === 1 ? 'success' : 'danger'
-}
-
-const getStatusLabel = (status: number) => {
-  return status === 1 ? '启用' : '禁用'
 }
 
 // 文本截断
@@ -258,87 +346,93 @@ const showAddDepartmentModal = () => {
   isEditing.value = false
   departmentForm.id = null
   departmentForm.name = ''
-  departmentForm.shortName = ''
+  departmentForm.leaderId = null
+  departmentForm.parentId = null
   departmentForm.status = 1 // 默认启用，值为1
+  departmentForm.description = ''
   departmentModalVisible.value = true
 }
 
 // 编辑部门
-const editDepartment = (department: any) => {
+const editDepartment = (department: Department) => {
   isEditing.value = true
-  Object.assign(departmentForm, department)
+  Object.assign(departmentForm, {
+    id: department.id,
+    name: department.name,
+    leaderId: department.leaderId,
+    parentId: department.parentId,
+    status: department.status,
+    description: department.description
+  })
   departmentModalVisible.value = true
 }
 
 // 查看部门详情
-const viewDepartment = async (department: any) => {
-  // 如果需要获取更详细的部门信息
+const viewDepartment = async (department: Department) => {
   try {
-    const detailData = await deptStore.getDepartmentDetailAction(department.id)
-    if (detailData) {
-      selectedDepartment.value = detailData
-    } else {
-      selectedDepartment.value = department
-    }
+    selectedDepartment.value = department
     viewDepartmentModalVisible.value = true
   } catch (error) {
-    console.error('获取部门详情失败', error)
-    ElMessage.error('获取部门详情失败')
+    ElMessage.error('系统异常，请联系管理员')
   }
 }
 
-// 保存部门（添加或更新）
-const saveDepartment = async () => {
-  if (!departmentFormRef.value) return
+// 切换部门状态（启用/禁用）
+const toggleDepartmentStatus = (department: Department) => {
+  const newStatus = department.status === 1 ? 0 : 1
+  const actionText = newStatus === 1 ? '启用' : '禁用'
 
-  await departmentFormRef.value.validate(async (valid) => {
-    if (valid) {
-      if (isEditing.value && departmentForm.id !== null) {
-        // 更新部门
-        const success = await deptStore.updateDepartmentAction(departmentForm.id, {
-          name: departmentForm.name,
-          shortName: departmentForm.shortName,
-          status: departmentForm.status
-        })
-        if (success) {
-          departmentModalVisible.value = false
-          await fetchDepartments() // 刷新数据
-        }
-      } else {
-        // 添加部门
-        const success = await deptStore.addDepartmentAction({
-          name: departmentForm.name,
-          shortName: departmentForm.shortName,
-          status: departmentForm.status
-        })
-        if (success) {
-          departmentModalVisible.value = false
-          await fetchDepartments() // 刷新数据
-        }
-      }
-    }
-  })
-}
-
-// 删除部门
-const deleteDepartment = (department: any) => {
   ElMessageBox.confirm(
-      '确定要删除这个部门吗？',
-      '警告',
+      `确定要${actionText}该部门吗？`,
+      '提示',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
       }
   ).then(async () => {
-    const success = await deptStore.deleteDepartmentAction(department.id)
+    const success = await deptStore.updateDepartmentStatusAction(department.id, newStatus)
     if (success) {
-      ElMessage.success('部门已删除')
-      await fetchDepartments() // 刷新数据
+      ElMessage.success(`部门已${actionText}`)
+      await fetchDepartments()
     }
   }).catch(() => {
-    ElMessage.info('已取消删除')
+    ElMessage.info('已取消操作')
   })
+}
+
+// 保存部门（添加或更新）
+const saveDepartment = async () => {
+  if (!departmentFormRef.value) return
+  await departmentFormRef.value.validate()
+
+  if (isEditing.value && departmentForm.id !== null) {
+    // 更新部门
+    const success = await deptStore.updateDepartmentAction(departmentForm.id, {
+      name: departmentForm.name,
+      leaderId: departmentForm.leaderId,
+      parentId: departmentForm.parentId,
+      status: departmentForm.status,
+      description: departmentForm.description
+    })
+    if (success) {
+      departmentModalVisible.value = false
+      await fetchDepartments()
+    }
+  } else {
+    // 添加部门
+    const success = await deptStore.addDepartmentAction({
+      name: departmentForm.name,
+      leaderId: departmentForm.leaderId,
+      parentId: departmentForm.parentId,
+      status: departmentForm.status,
+      description: departmentForm.description
+    })
+    if (success) {
+      departmentModalVisible.value = false
+      await fetchDepartments()
+    }
+  }
 }
 </script>
 
@@ -368,6 +462,7 @@ const deleteDepartment = (department: any) => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .white-bg-input {
@@ -378,37 +473,6 @@ const deleteDepartment = (department: any) => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-}
-
-/* Dark theme adaptations */
-:deep(.dark) {
-  .department-card {
-    background-color: #2d2d2d;
-    border-color: rgba(255, 255, 255, 0.1);
-  }
-
-  .card-title {
-    color: #e5e7eb;
-  }
-
-  .white-bg-input :deep(.el-input__wrapper) {
-    background-color: #1c1c1c;
-    box-shadow: 0 0 0 1px #4a4a4a inset;
-  }
-
-  .white-bg-input :deep(.el-input__inner) {
-    color: #e5e7eb;
-  }
-
-  :deep(.el-table) {
-    background-color: #2d2d2d;
-    color: #e5e7eb;
-  }
-
-  :deep(.el-table th),
-  :deep(.el-table tr) {
-    background-color: #1c1c1c;
-  }
 }
 
 /* Modal styles */
@@ -450,10 +514,48 @@ const deleteDepartment = (department: any) => {
   .detail-value {
     color: #666;
   }
+
+  .detail-description {
+    color: #666;
+    margin-top: 8px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+  }
 }
 
-/* Dark theme modal adaptations */
+/* Dark theme adaptations */
 :deep(.dark) {
+  .department-card {
+    background-color: #2d2d2d;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .card-title {
+    color: #e5e7eb;
+  }
+
+  .white-bg-input :deep(.el-input__wrapper) {
+    background-color: #1c1c1c;
+    box-shadow: 0 0 0 1px #4a4a4a inset;
+  }
+
+  .white-bg-input :deep(.el-input__inner) {
+    color: #e5e7eb;
+  }
+
+  :deep(.el-table) {
+    background-color: #2d2d2d;
+    color: #e5e7eb;
+  }
+
+  :deep(.el-table th),
+  :deep(.el-table tr) {
+    background-color: #1c1c1c;
+  }
+
   .department-detail-content {
     .detail-label {
       color: #e5e7eb;
@@ -462,6 +564,23 @@ const deleteDepartment = (department: any) => {
     .detail-value {
       color: #9ca3af;
     }
+
+    .detail-description {
+      background-color: #363636;
+      color: #e5e7eb;
+    }
+  }
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .department-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .white-bg-input {
+    width: 100%;
   }
 }
 </style>
