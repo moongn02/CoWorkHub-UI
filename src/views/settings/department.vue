@@ -12,17 +12,10 @@
 
           <!-- Department search -->
           <div class="department-actions">
-            <el-input
-                v-model="searchKeyword"
-                placeholder="搜索部门"
-                class="white-bg-input"
-                @keyup.enter="handleSearch"
-            />
             <el-select
                 v-model="parentDepartment"
                 placeholder="上级部门"
                 class="white-bg-input"
-                @change="handleParentChange"
                 filterable
                 clearable
             >
@@ -34,11 +27,17 @@
                   :value="dept.id"
               />
             </el-select>
-            <el-select v-model="departmentStatus" placeholder="部门状态" class="white-bg-input" @change="handleStatusChange">
+            <el-select v-model="departmentStatus" placeholder="部门状态" class="white-bg-input">
               <el-option label="全部" value="" />
               <el-option label="启用" :value="1" />
               <el-option label="禁用" :value="0" />
             </el-select>
+            <el-input
+                v-model="searchKeyword"
+                placeholder="搜索部门"
+                class="white-bg-input"
+                @keyup.enter="handleSearch"
+            />
             <el-button type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
@@ -110,7 +109,7 @@
           <el-option
               v-for="leader in leaderOptions"
               :key="leader.id"
-              :label="leader.name"
+              :label="leader.realName"
               :value="leader.id"
           />
         </el-select>
@@ -287,7 +286,7 @@ const fetchDepartments = async () => {
 
 // 获取部门负责人选项
 const fetchLeaderOptions = async () => {
-  leaderOptions.value = await userStore.getUsersForLeaderSelection()
+  leaderOptions.value = await userStore.getUsersAction()
 }
 
 // 获取上级部门选项
@@ -299,30 +298,24 @@ const fetchParentDepartmentOptions = async () => {
 const handleCurrentChange = async (val: number) => {
   currentPage.value = val
   await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 
 const handleSizeChange = async (val: number) => {
   pageSize.value = val
   currentPage.value = 1 // 重置到第一页
   await fetchDepartments()
-}
-
-// 处理状态筛选变化
-const handleStatusChange = async () => {
-  currentPage.value = 1 // 重置到第一页
-  await fetchDepartments()
-}
-
-// 处理上级部门筛选变化
-const handleParentChange = async () => {
-  currentPage.value = 1 // 重置到第一页
-  await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 
 // 搜索部门
 const handleSearch = async () => {
   currentPage.value = 1 // 重置到第一页
   await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 
 // 重置搜索条件
@@ -332,6 +325,8 @@ const resetSearch = async () => {
   parentDepartment.value = ''
   currentPage.value = 1
   await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 
 // 文本截断
@@ -354,7 +349,7 @@ const showAddDepartmentModal = () => {
 }
 
 // 编辑部门
-const editDepartment = (department: Department) => {
+const editDepartment = async (department: Department) => {
   isEditing.value = true
   Object.assign(departmentForm, {
     id: department.id,
@@ -365,6 +360,9 @@ const editDepartment = (department: Department) => {
     description: department.description
   })
   departmentModalVisible.value = true
+  await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 
 // 查看部门详情
@@ -395,9 +393,10 @@ const toggleDepartmentStatus = (department: Department) => {
     if (success) {
       ElMessage.success(`部门已${actionText}`)
       await fetchDepartments()
+      await fetchLeaderOptions()
+      await fetchParentDepartmentOptions()
     }
   }).catch(() => {
-    ElMessage.info('已取消操作')
   })
 }
 
@@ -417,7 +416,6 @@ const saveDepartment = async () => {
     })
     if (success) {
       departmentModalVisible.value = false
-      await fetchDepartments()
     }
   } else {
     // 添加部门
@@ -430,9 +428,11 @@ const saveDepartment = async () => {
     })
     if (success) {
       departmentModalVisible.value = false
-      await fetchDepartments()
     }
   }
+  await fetchDepartments()
+  await fetchLeaderOptions()
+  await fetchParentDepartmentOptions()
 }
 </script>
 

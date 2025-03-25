@@ -33,3 +33,11 @@ export const changePassword = (data: any) => {
         data
     })
 }
+
+// 获取所有用户
+export function getUsers() {
+    return request({
+        url: `/api/user/list`,
+        method: 'get',
+    });
+}

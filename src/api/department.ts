@@ -2,12 +2,12 @@
 import request from '@/utils/request'
 
 // 获取部门列表（分页）
-export function getDepartmentList(page: number, size: number, query: any = {}) {
+export function getDepartmentList(current: number, size: number, query: any = {}) {
     return request({
-        url: '/api/departments/page_list',
+        url: '/api/department/page_list',
         method: 'get',
         params: {
-            page,
+            current,
             size,
             ...query
         }
@@ -17,7 +17,7 @@ export function getDepartmentList(page: number, size: number, query: any = {}) {
 // 获取部门详情
 export function getDepartmentDetail(id: number) {
     return request({
-        url: `/api/departments/${id}`,
+        url: `/api/department/${id}`,
         method: 'get'
     })
 }
@@ -25,7 +25,7 @@ export function getDepartmentDetail(id: number) {
 // 添加部门
 export function addDepartment(data: any) {
     return request({
-        url: '/api/departments/add',
+        url: '/api/department/add',
         method: 'post',
         data
     })
@@ -34,8 +34,8 @@ export function addDepartment(data: any) {
 // 更新部门
 export function updateDepartment(id: number, data: any) {
     return request({
-        url: `/api/departments/update/${id}`,
-        method: 'post',
+        url: `/api/department/update/${id}`,
+        method: 'put',
         data
     })
 }
@@ -43,16 +43,15 @@ export function updateDepartment(id: number, data: any) {
 // 更新部门状态
 export function updateDepartmentStatus(id: number, status: number) {
     return request({
-        url: `/api/departments/update_status/${id}`,
-        method: 'post',
-        data: { status }
+        url: `/api/department/update_status/${id}?status=${status}`,
+        method: 'put',
     })
 }
 
 // 获取所有一级部门（parent_id = 0）
 export function getParentDepartments() {
     return request({
-        url: '/api/departments/parents',
-        method: 'get'
+        url: '/api/department/parents',
+        method: 'get',
     })
 }

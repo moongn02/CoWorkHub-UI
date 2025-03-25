@@ -21,9 +21,9 @@ export const useDeptStore = defineStore('department', () => {
     const loading = ref(false)
 
     // 获取分页部门列表
-    const getPagingDepartmentListAction = async (page: number, size: number, query: any = {}) => {
+    const getPagingDepartmentListAction = async (current: number, size: number, query: any = {}) => {
         loading.value = true
-        const res = await getDepartmentList(page, size, query)
+        const res = await getDepartmentList(current, size, query)
         loading.value = false
 
         const { success, data } = res.data

@@ -5,7 +5,7 @@ import type { LoginData} from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
 import { ElMessage } from 'element-plus'
-import {changePassword, getEditUserInfo, getUserInfo, updateUserInfo} from "@/api/user";
+import {changePassword, getEditUserInfo, getUserInfo, getUsers, updateUserInfo} from "@/api/user";
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
@@ -118,6 +118,17 @@ export const useUserStore = defineStore('user', () => {
     removeToken()
   }
 
+  const getUsersAction = async () => {
+    const res = await getUsers()
+
+    const { success, data } = res.data
+    if (success) {
+      return data
+    } else {
+      ElMessage.error(res.data.message)
+    }
+  }
+
   return {
     token,
     userInfo,
@@ -128,6 +139,7 @@ export const useUserStore = defineStore('user', () => {
     getUserInfoAction,
     getEditUserInfoAction,
     updateUserAction,
-    changePasswordAction
+    changePasswordAction,
+    getUsersAction
   }
 })
