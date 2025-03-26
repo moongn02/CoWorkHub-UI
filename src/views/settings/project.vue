@@ -20,12 +20,18 @@
                 filterable
                 :props="{
                   checkStrictly: true,
-                  label: 'label',
+                  label: 'name',
                   value: 'id',
                   emitPath: false
                 }"
                 class="white-bg-input"
-            />
+            >
+              <template #default="{ node, data }">
+                <div @click="handleOptionClickSearch(node, data)">
+                  {{ data.name }}
+                </div>
+              </template>
+            </el-cascader>
             <el-select
                 v-model="parentId"
                 placeholder="一级项目"
@@ -66,8 +72,8 @@
               </template>
             </el-table-column>
             <el-table-column prop="parentName" label="父级项目" min-width="180" />
-            <el-table-column prop="departmentName" label="所属部门" min-width="180" />
-            <el-table-column prop="updaterName" label="最后更新人" min-width="180" />
+            <el-table-column prop="departmentName" label="所属部门" min-width="170" />
+            <el-table-column prop="updaterName" label="最后更新人" min-width="170" />
             <el-table-column label="状态" width="150">
               <template #default="scope">
                 <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
@@ -130,14 +136,26 @@
         </el-select>
       </el-form-item>
       <el-form-item label="所属部门" prop="departmentId">
-        <el-select v-model="projectForm.departmentId" placeholder="请选择所属部门" filterable>
-          <el-option
-              v-for="dept in departmentOptions"
-              :key="dept.id"
-              :label="dept.name"
-              :value="dept.id"
-          />
-        </el-select>
+        <el-cascader
+            v-model="projectForm.departmentId"
+            :options="departmentTreeData"
+            placeholder="请选择所属部门"
+            clearable
+            filterable
+            :props="{
+              checkStrictly: true,
+              label: 'name',
+              value: 'id',
+              emitPath: false
+            }"
+            class="white-bg-input"
+        >
+          <template #default="{ node, data }">
+            <div @click="handleOptionClickSave(node, data)">
+              {{ data.name }}
+            </div>
+          </template>
+        </el-cascader>
       </el-form-item>
       <el-form-item label="项目状态" prop="status">
         <el-select v-model="projectForm.status">
@@ -274,6 +292,14 @@ const projectForm = reactive<Project>({
   status: 1 // 默认启用，值为1
 })
 const selectedProject = ref<Project | null>(null)
+
+const handleOptionClickSearch = (node, data) => {
+  departmentId.value = data.id;
+};
+
+const handleOptionClickSave = (node, data) => {
+  projectForm.departmentId = data.id;
+};
 
 // 初始化加载数据
 onMounted(async () => {
