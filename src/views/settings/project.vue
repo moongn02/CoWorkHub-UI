@@ -12,27 +12,51 @@
 
           <!-- Project search -->
           <div class="project-actions">
+            <el-cascader
+                v-model="departmentId"
+                :options="departmentTreeData"
+                placeholder="所属部门"
+                clearable
+                filterable
+                :props="{
+                  checkStrictly: true,
+                  label: 'label',
+                  value: 'id',
+                  emitPath: false
+                }"
+                class="white-bg-input"
+            />
+            <el-select
+                v-model="parentId"
+                placeholder="一级项目"
+                class="white-bg-input"
+                filterable
+                clearable
+            >
+              <el-option label="全部" value="" />
+              <el-option
+                  v-for="project in parentProjectOptions"
+                  :key="project.id"
+                  :label="project.name"
+                  :value="project.id"
+              />
+            </el-select>
+            <el-select v-model="projectStatus" placeholder="项目状态" class="white-bg-input">
+              <el-option label="全部" value="" />
+              <el-option label="启用" :value="1" />
+              <el-option label="禁用" :value="0" />
+            </el-select>
             <el-input
                 v-model="searchKeyword"
                 placeholder="搜索项目"
                 class="white-bg-input"
             />
-            <el-select v-model="projectStatus" placeholder="项目状态" class="white-bg-input">
-              <el-option label="全部" value="" />
-              <el-option label="启用" value="ENABLE" />
-              <el-option label="禁用" value="DISABLE" />
-            </el-select>
-            <el-select v-model="department" placeholder="部门" class="white-bg-input">
-              <el-option label="全部" value="" />
-              <el-option label="技术部" value="技术部" />
-              <el-option label="市场部" value="市场部" />
-              <el-option label="运营部" value="运营部" />
-              <el-option label="财务部" value="财务部" />
-            </el-select>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </div>
 
           <!-- Project table -->
-          <el-table :data="filteredProjects" style="width: 100%" v-loading="loading">
+          <el-table :data="projectList" style="width: 100%" v-loading="loading">
             <el-table-column prop="id" label="ID" width="100" />
             <el-table-column label="项目名称" min-width="200">
               <template #default="scope">
@@ -41,26 +65,27 @@
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column label="项目简称" min-width="200">
+            <el-table-column prop="parentName" label="父级项目" min-width="180" />
+            <el-table-column prop="departmentName" label="所属部门" min-width="180" />
+            <el-table-column prop="updaterName" label="最后更新人" min-width="180" />
+            <el-table-column label="状态" width="150">
               <template #default="scope">
-                <el-tooltip :content="scope.row.shortName" placement="top">
-                  <span>{{ truncateText(scope.row.shortName, 8) }}</span>
-                </el-tooltip>
-              </template>
-            </el-table-column>
-            <el-table-column prop="department" label="所属部门" width="150" />
-            <el-table-column prop="status" label="状态" width="150">
-              <template #default="scope">
-                <el-tag :type="getStatusType(scope.row.status)">
-                  {{ getStatusLabel(scope.row.status) }}
+                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                  {{ scope.row.statusText }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewProject(scope.row)" icon="View" circle />
-                <el-button type="warning" @click="editProject(scope.row)" icon="Edit" circle />
-                <el-button type="danger" @click="deleteProject(scope.row)" icon="Delete" circle />
+                <el-button type="primary" @click="viewProject(scope.row)" icon="View" circle title="查看" />
+                <el-button
+                    :type="scope.row.status === 1 ? 'danger' : 'success'"
+                    @click="toggleProjectStatus(scope.row)"
+                    :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
+                    circle
+                    :title="scope.row.status === 1 ? '禁用' : '启用'"
+                />
+                <el-button type="warning" @click="editProject(scope.row)" icon="Edit" circle title="编辑" />
               </template>
             </el-table-column>
           </el-table>
@@ -86,28 +111,38 @@
   <el-dialog
       v-model="projectModalVisible"
       :title="isEditing ? '编辑项目' : '添加项目'"
-      width="50%"
+      width="40%"
       center
   >
-    <el-form :model="projectForm" label-width="100px">
-      <el-form-item label="项目名称">
+    <el-form :model="projectForm" label-width="120px" :rules="formRules" ref="projectFormRef">
+      <el-form-item label="项目名称" prop="name">
         <el-input v-model="projectForm.name" maxlength="30" show-word-limit />
       </el-form-item>
-      <el-form-item label="项目简称">
-        <el-input v-model="projectForm.shortName" maxlength="10" show-word-limit />
-      </el-form-item>
-      <el-form-item label="所属部门">
-        <el-select v-model="projectForm.department">
-          <el-option label="技术部" value="技术部" />
-          <el-option label="市场部" value="市场部" />
-          <el-option label="运营部" value="运营部" />
-          <el-option label="财务部" value="财务部" />
+      <el-form-item label="父级项目" prop="parentId">
+        <el-select v-model="projectForm.parentId" placeholder="请选择父级项目" filterable clearable>
+          <el-option label="无父级项目" :value="0" />
+          <el-option
+              v-for="project in parentProjectOptions"
+              :key="project.id"
+              :label="project.name"
+              :value="project.id"
+          />
         </el-select>
       </el-form-item>
-      <el-form-item label="状态">
+      <el-form-item label="所属部门" prop="departmentId">
+        <el-select v-model="projectForm.departmentId" placeholder="请选择所属部门" filterable>
+          <el-option
+              v-for="dept in departmentOptions"
+              :key="dept.id"
+              :label="dept.name"
+              :value="dept.id"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="项目状态" prop="status">
         <el-select v-model="projectForm.status">
-          <el-option label="启用" value="ENABLE" />
-          <el-option label="禁用" value="DISABLE" />
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -123,174 +158,284 @@
   <el-dialog
       v-model="viewProjectModalVisible"
       title="项目详情"
-      width="30%"
+      width="40%"
       center
       class="project-detail-dialog"
   >
     <div v-if="selectedProject" class="project-detail-content">
       <div class="detail-item">
+        <span class="detail-label">项目ID：</span>
+        <span class="detail-value">{{ selectedProject.id }}</span>
+      </div>
+      <div class="detail-item">
         <span class="detail-label">项目名称：</span>
         <span class="detail-value">{{ selectedProject.name }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">项目简称：</span>
-        <span class="detail-value">{{ selectedProject.shortName }}</span>
+        <span class="detail-label">父级项目：</span>
+        <span class="detail-value">{{ selectedProject.parentName }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">部门：</span>
-        <span class="detail-value">{{ selectedProject.department }}</span>
+        <span class="detail-label">所属部门：</span>
+        <span class="detail-value">{{ selectedProject.departmentName }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">状态：</span>
-        <span class="detail-value">{{ getStatusLabel(selectedProject.status) }}</span>
+        <span class="detail-label">最后更新人：</span>
+        <span class="detail-value">{{ selectedProject.updaterName }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">项目状态：</span>
+        <span class="detail-value">
+          <el-tag :type="selectedProject.status === 1 ? 'success' : 'danger'" size="small">
+            {{ selectedProject.statusText }}
+          </el-tag>
+        </span>
       </div>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import Layout from '@/components/Layout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import type {FormInstance} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {useProjectStore} from '@/stores/project'
+import {useDeptStore} from '@/stores/department'
+import {useUserStore} from '@/stores/user'
 
-// Project data
-const projects = ref([
-  { id: 1, name: '网站重构项目', shortName: '网站重构', department: '技术部', status: 'ENABLE'},
-  { id: 2, name: '新产品营销活动', shortName: '产品营销', department: '市场部', status: 'ENABLE'},
-  { id: 3, name: '财务系统升级', shortName: '财务升级', department: '财务部', status: 'DISABLE'},
-])
+// 使用项目状态管理
+const projectStore = useProjectStore()
+const deptStore = useDeptStore()
+const userStore = useUserStore()
 
-const loading = ref(false)
+// 表单引用
+const projectFormRef = ref<FormInstance>()
+
+// 表单验证规则
+const formRules = {
+  name: [
+    { required: true, message: '请输入项目名称', trigger: 'blur' },
+    { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
+  ],
+  departmentId: [
+    { required: true, message: '请选择所属部门', trigger: 'change' }
+  ],
+  status: [
+    { required: true, message: '请选择项目状态', trigger: 'change' }
+  ]
+}
+
+// 分页和筛选相关
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(projects.value.length)
 const projectStatus = ref('')
 const searchKeyword = ref('')
-const department = ref('')
+const departmentId = ref('')
+const parentId = ref('')
+
+// 计算属性：获取项目列表和总数
+const projectList = computed(() => projectStore.projectList)
+const total = computed(() => projectStore.pagination.total)
+const loading = computed(() => projectStore.loading)
+
+// 部门选项
+const departmentOptions = ref([])
+// 部门树数据
+const departmentTreeData = ref([])
+// 父级项目选项
+const parentProjectOptions = ref([])
 
 // Project modal related refs
 const projectModalVisible = ref(false)
 const viewProjectModalVisible = ref(false)
 const isEditing = ref(false)
-const projectForm = reactive({
+
+interface Project {
+  id: number | null;
+  name: string;
+  parentId: number | null;
+  parentName?: string;
+  departmentId: number | null;
+  departmentName?: string;
+  updaterId: number | null;
+  updaterName?: string;
+  status: number;
+  statusText?: string;
+}
+
+// 修改项目表单的初始化
+const projectForm = reactive<Project>({
   id: null,
   name: '',
-  shortName: '',
-  department: '',
-  status: 'DISABLE',
+  parentId: null,
+  departmentId: null,
+  updaterId: null,
+  status: 1 // 默认启用，值为1
 })
-const selectedProject = ref(null)
+const selectedProject = ref<Project | null>(null)
 
-// Filter projects based on search keyword
-const filteredProjects = computed(() => {
-  let filtered = projects.value
-
-  if (projectStatus.value) {
-    filtered = filtered.filter(project => project.status === projectStatus.value)
-  }
-
-  if (department.value) {
-    filtered = filtered.filter(project => project.department === projectStatus.value)
-  }
-
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    filtered = filtered.filter(project =>
-        project.name.toLowerCase().includes(keyword) ||
-        project.shortName.toLowerCase().includes(keyword) ||
-        project.department.toLowerCase().includes(keyword)
-    )
-  }
-
-  total.value = filtered.length
-  return filtered.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
+// 初始化加载数据
+onMounted(async () => {
+  await Promise.all([
+    fetchProjects(),
+    fetchDepartmentTree(),
+    fetchParentProjectOptions()
+  ])
 })
 
-const handleCurrentChange = (val: number) => {
+// 获取项目列表
+const fetchProjects = async () => {
+  const query = {
+    status: projectStatus.value !== '' ? projectStatus.value : undefined,
+    keyword: searchKeyword.value || undefined,
+    departmentId: departmentId.value || undefined,
+    parentId: parentId.value || undefined
+  }
+  await projectStore.getPagingProjectListAction(currentPage.value, pageSize.value, query)
+}
+
+// 获取部门树
+const fetchDepartmentTree = async () => {
+  departmentTreeData.value = await deptStore.getDepartmentTreeAction()
+}
+
+// 获取父级项目选项
+const fetchParentProjectOptions = async () => {
+  parentProjectOptions.value = await projectStore.getParentProjectsAction()
+}
+
+// 处理分页变化
+const handleCurrentChange = async (val: number) => {
   currentPage.value = val
+  await fetchProjects()
+  await fetchParentProjectOptions()
 }
 
-const handleSizeChange = (val: number) => {
+const handleSizeChange = async (val: number) => {
   pageSize.value = val
+  currentPage.value = 1 // 重置到第一页
+  await fetchProjects()
+  await fetchParentProjectOptions()
 }
 
-const getStatusType = (status: string) => {
-  const types = {
-    ENABLE: 'success',
-    DISABLE: 'danger'
-  }
-  return types[status] || 'info'
+// 搜索项目
+const handleSearch = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchProjects()
+  await fetchParentProjectOptions()
 }
 
-const getStatusLabel = (status: string) => {
-  const labels = {
-    ENABLE: '启用',
-    DISABLE: '禁用',
-  }
-  return labels[status] || '未知'
+// 重置搜索条件
+const resetSearch = async () => {
+  searchKeyword.value = ''
+  projectStatus.value = ''
+  departmentId.value = ''
+  parentId.value = ''
+  currentPage.value = 1
+  await fetchProjects()
+  await fetchParentProjectOptions()
 }
 
+// 文本截断
 const truncateText = (text: string, maxLength: number) => {
+  if (!text) return ''
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength) + '...'
 }
 
+// 显示添加项目模态框
 const showAddProjectModal = () => {
   isEditing.value = false
   projectForm.id = null
   projectForm.name = ''
-  projectForm.shortName = ''
-  projectForm.department = ''
-  projectForm.status = 'ENABLE'
+  projectForm.parentId = null
+  projectForm.departmentId = null
+  projectForm.updaterId = null
+  projectForm.status = 1 // 默认启用，值为1
   projectModalVisible.value = true
 }
 
-const editProject = (project) => {
+// 编辑项目
+const editProject = (project: Project) => {
   isEditing.value = true
-  Object.assign(projectForm, project)
+  Object.assign(projectForm, {
+    id: project.id,
+    name: project.name,
+    parentId: project.parentId,
+    departmentId: project.departmentId,
+    updaterId: project.updaterId,
+    status: project.status
+  })
   projectModalVisible.value = true
 }
 
-const viewProject = (project) => {
-  selectedProject.value = project
-  viewProjectModalVisible.value = true
-}
-
-const saveProject = () => {
-  if (isEditing.value) {
-    const index = projects.value.findIndex(project => project.id === projectForm.id)
-    if (index !== -1) {
-      projects.value[index] = { ...projectForm }
-      ElMessage.success('项目已更新')
-    }
-  } else {
-    const newProject = {
-      ...projectForm,
-      id: projects.value.length + 1,
-    }
-    projects.value.push(newProject)
-    ElMessage.success('项目已添加')
+// 查看项目详情
+const viewProject = async (project: Project) => {
+  try {
+    selectedProject.value = project
+    viewProjectModalVisible.value = true
+  } catch (error) {
+    ElMessage.error('系统异常，请联系管理员')
   }
-  projectModalVisible.value = false
 }
 
-const deleteProject = (project) => {
+// 切换项目状态（启用/禁用）
+const toggleProjectStatus = (project: Project) => {
+  const newStatus = project.status === 1 ? 0 : 1
+  const actionText = newStatus === 1 ? '启用' : '禁用'
+
   ElMessageBox.confirm(
-      '确定要删除这个项目吗？',
-      '警告',
+      `确定要${actionText}该项目吗？`,
+      '提示',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
       }
-  ).then(() => {
-    const index = projects.value.findIndex(p => p.id === project.id)
-    if (index !== -1) {
-      projects.value.splice(index, 1)
-      ElMessage.success('项目已删除')
+  ).then(async () => {
+    const success = await projectStore.updateProjectStatusAction(project.id, newStatus)
+    if (success) {
+      ElMessage.success(`项目已${actionText}`)
+      await fetchProjects()
+      await fetchParentProjectOptions()
     }
   }).catch(() => {
-    ElMessage.info('已取消删除')
+  })
+}
+
+// 保存项目（添加或更新）
+const saveProject = async () => {
+  if (!projectFormRef.value) return
+
+  await projectFormRef.value.validate(async (valid) => {
+    if (valid) {
+      if (isEditing.value && projectForm.id !== null) {
+        // 更新项目
+        const success = await projectStore.updateProjectAction(projectForm.id, {
+          name: projectForm.name,
+          parentId: projectForm.parentId,
+          departmentId: projectForm.departmentId,
+          status: projectForm.status
+        })
+        if (success) {
+          projectModalVisible.value = false
+        }
+      } else {
+        // 添加项目
+        const success = await projectStore.addProjectAction({
+          name: projectForm.name,
+          parentId: projectForm.parentId,
+          departmentId: projectForm.departmentId,
+          status: projectForm.status
+        })
+        if (success) {
+          projectModalVisible.value = false
+        }
+      }
+      await fetchProjects()
+      await fetchParentProjectOptions()
+    }
   })
 }
 </script>
@@ -321,6 +466,7 @@ const deleteProject = (project) => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .white-bg-input {
@@ -331,6 +477,47 @@ const deleteProject = (project) => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Modal styles */
+:deep(.project-detail-dialog) {
+  .el-dialog__header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+
+    .el-dialog__title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+  }
+
+  .el-dialog__body {
+    padding: 30px;
+  }
+}
+
+.project-detail-content {
+  .detail-item {
+    margin-bottom: 25px;
+    line-height: 1.8;
+    font-size: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .detail-label {
+    font-weight: 600;
+    color: #333;
+    margin-right: 10px;
+    min-width: 90px;
+    display: inline-block;
+  }
+
+  .detail-value {
+    color: #666;
+  }
 }
 
 /* Dark theme adaptations */
@@ -362,52 +549,7 @@ const deleteProject = (project) => {
   :deep(.el-table tr) {
     background-color: #1c1c1c;
   }
-}
 
-/* 弹窗整体样式 */
-:deep(.project-detail-dialog) {
-  .el-dialog__header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-
-    .el-dialog__title {
-      font-size: 20px;
-      font-weight: 600;
-    }
-  }
-
-  .el-dialog__body {
-    padding: 30px;
-  }
-}
-
-/* 内容样式 */
-.project-detail-content {
-  .detail-item {
-    margin-bottom: 25px;
-    line-height: 1.8;
-    font-size: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .detail-label {
-    font-weight: 600;
-    color: #333;
-    margin-right: 10px;
-    min-width: 90px;
-    display: inline-block;
-  }
-
-  .detail-value {
-    color: #666;
-  }
-}
-
-/* 暗色主题适配 */
-:deep(.dark) {
   .project-detail-content {
     .detail-label {
       color: #e5e7eb;
@@ -419,4 +561,15 @@ const deleteProject = (project) => {
   }
 }
 
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .project-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .white-bg-input {
+    width: 100%;
+  }
+}
 </style>
