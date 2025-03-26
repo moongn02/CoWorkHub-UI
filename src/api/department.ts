@@ -55,3 +55,11 @@ export function getParentDepartments() {
         method: 'get',
     })
 }
+
+// 获取部门树结构
+export function getDepartmentTree() {
+    return request({
+        url: '/api/department/tree',
+        method: 'get'
+    });
+}

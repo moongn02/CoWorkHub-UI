@@ -6,13 +6,15 @@ import {
     addDepartment,
     updateDepartment,
     updateDepartmentStatus,
-    getParentDepartments
+    getParentDepartments,
+    getDepartmentTree
 } from '@/api/department'
 import { ElMessage } from 'element-plus'
 
 export const useDeptStore = defineStore('department', () => {
     // 状态
     const departmentList = ref<any[]>([])
+    const  departmentTree = ref<any[]>([])
     const pagination = ref({
         total: 0,
         current: 1,
@@ -108,6 +110,22 @@ export const useDeptStore = defineStore('department', () => {
         }
     }
 
+    // 获取部门树结构
+    const getDepartmentTreeAction = async () => {
+        loading.value = true
+        const res = await getDepartmentTree()
+        loading.value = false
+
+        const { success, data } = res.data
+        if (success) {
+            departmentTree.value = data
+            return data
+        } else {
+            ElMessage.error(res.data.message)
+            return []
+        }
+    }
+
     return {
         departmentList,
         pagination,
@@ -117,6 +135,7 @@ export const useDeptStore = defineStore('department', () => {
         addDepartmentAction,
         updateDepartmentAction,
         updateDepartmentStatusAction,
-        getParentDepartmentsAction
+        getParentDepartmentsAction,
+        getDepartmentTreeAction
     }
 })
