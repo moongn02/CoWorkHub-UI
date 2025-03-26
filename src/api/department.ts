@@ -2,7 +2,7 @@
 import request from '@/utils/request'
 
 // 获取部门列表（分页）
-export function getDepartmentList(current: number, size: number, query: any = {}) {
+export function getPagingDepartmentList(current: number, size: number, query: any = {}) {
     return request({
         url: '/api/department/page_list',
         method: 'get',

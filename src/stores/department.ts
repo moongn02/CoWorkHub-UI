@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import {
-    getDepartmentList,
+    getPagingDepartmentList,
     getDepartmentDetail,
     addDepartment,
     updateDepartment,
@@ -23,7 +23,7 @@ export const useDeptStore = defineStore('department', () => {
     // 获取分页部门列表
     const getPagingDepartmentListAction = async (current: number, size: number, query: any = {}) => {
         loading.value = true
-        const res = await getDepartmentList(current, size, query)
+        const res = await getPagingDepartmentList(current, size, query)
         loading.value = false
 
         const { success, data } = res.data
