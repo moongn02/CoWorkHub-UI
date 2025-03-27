@@ -20,12 +20,8 @@
                 clearable
             >
               <el-option label="全部" value="" />
-              <el-option
-                  v-for="type in typeOptions"
-                  :key="type.value"
-                  :label="type.label"
-                  :value="type.value"
-              />
+              <el-option label="菜单权限" :value="1" />
+              <el-option label="按钮权限" :value="2" />
             </el-select>
             <el-select v-model="permissionStatus" placeholder="权限状态" class="white-bg-input">
               <el-option label="全部" value="" />
@@ -61,7 +57,7 @@
             <el-table-column label="权限类型" width="120">
               <template #default="scope">
                 <el-tag :type="getTypeTagType(scope.row.type)">
-                  {{ getTypeLabel(scope.row.type) }}
+                  {{ scope.row.typeName }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -138,12 +134,8 @@
       </el-form-item>
       <el-form-item label="权限类型" prop="type">
         <el-select v-model="permissionForm.type" placeholder="请选择权限类型">
-          <el-option
-              v-for="type in typeOptions"
-              :key="type.value"
-              :label="type.label"
-              :value="type.value"
-          />
+          <el-option label="菜单权限" :value="1" />
+          <el-option label="按钮权限" :value="2" />
         </el-select>
       </el-form-item>
       <el-form-item label="敏感权限" prop="isSensitive">
@@ -247,12 +239,6 @@ const formRules = {
     { required: true, message: '请选择权限状态', trigger: 'change' }
   ]
 }
-
-// 权限类型选项
-const typeOptions = [
-  { value: 1, label: '菜单权限' },
-  { value: 2, label: '按钮权限' },
-]
 
 // 分页和筛选相关
 const currentPage = ref(1)
