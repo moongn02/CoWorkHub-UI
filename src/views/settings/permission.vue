@@ -438,7 +438,7 @@ const savePermission = async () => {
   await permissionFormRef.value.validate(async (valid) => {
     if (valid) {
       if (isEditing.value && permissionForm.id !== null) {
-        // 更新���限
+        // 更新权限
         const success = await permissionStore.updatePermissionAction(permissionForm.id, {
           code: permissionForm.code,
           name: permissionForm.name,
