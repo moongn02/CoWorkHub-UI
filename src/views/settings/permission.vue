@@ -12,36 +12,84 @@
 
           <!-- Permission search -->
           <div class="permission-actions">
+            <el-select
+                v-model="permissionType"
+                placeholder="权限类型"
+                class="white-bg-input"
+                filterable
+                clearable
+            >
+              <el-option label="全部" value="" />
+              <el-option
+                  v-for="type in typeOptions"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value"
+              />
+            </el-select>
+            <el-select v-model="permissionStatus" placeholder="权限状态" class="white-bg-input">
+              <el-option label="全部" value="" />
+              <el-option label="启用" :value="1" />
+              <el-option label="禁用" :value="0" />
+            </el-select>
+            <el-select v-model="sensitivePermission" placeholder="敏感权限" class="white-bg-input">
+              <el-option label="全部" value="" />
+              <el-option label="是" :value="true" />
+              <el-option label="否" :value="false" />
+            </el-select>
             <el-input
                 v-model="searchKeyword"
                 placeholder="搜索权限"
                 class="white-bg-input"
             />
-            <el-select v-model="permissionLevel" placeholder="权限等级" class="white-bg-input">
-              <el-option label="全部" value="" />
-              <el-option label="一级" value="一级" />
-              <el-option label="二级" value="二级" />
-              <el-option label="三级" value="三级" />
-            </el-select>
+            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button @click="resetSearch">重置</el-button>
           </div>
 
           <!-- Permission table -->
-          <el-table :data="filteredPermissions" style="width: 100%" v-loading="loading">
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column prop="name" label="权限名称" min-width="180" />
-            <el-table-column prop="path" label="路径" min-width="180" />
-            <el-table-column prop="level" label="权限等级" width="120">
+          <el-table :data="permissionList" style="width: 100%" v-loading="loading">
+            <el-table-column prop="id" label="权限ID" width="150" />
+            <el-table-column prop="code" label="权限编码" min-width="180" />
+            <el-table-column label="权限名称" min-width="200">
               <template #default="scope">
-                <el-tag :type="getLevelType(scope.row.level)">
-                  {{ scope.row.level }}
+                <el-tooltip :content="scope.row.name" placement="top">
+                  <span>{{ truncateText(scope.row.name, 15) }}</span>
+                </el-tooltip>
+              </template>
+            </el-table-column>
+            <el-table-column prop="parentName" label="上级权限" min-width="200" />
+            <el-table-column label="权限类型" width="120">
+              <template #default="scope">
+                <el-tag :type="getTypeTagType(scope.row.type)">
+                  {{ getTypeLabel(scope.row.type) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="敏感权限" width="150">
+              <template #default="scope">
+                <el-tag :type="scope.row.isSensitive ? 'danger' : 'info'" size="small">
+                  {{ scope.row.isSensitive ? '是' : '否' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="150">
+              <template #default="scope">
+                <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
+                  {{ scope.row.statusText }}
                 </el-tag>
               </template>
             </el-table-column>
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewPermission(scope.row)" icon="View" circle />
-                <el-button type="warning" @click="editPermission(scope.row)" icon="Edit" circle />
-                <el-button type="danger" @click="deletePermission(scope.row)" icon="Delete" circle />
+                <el-button type="primary" @click="viewPermission(scope.row)" icon="View" circle title="查看" />
+                <el-button
+                    :type="scope.row.status === 1 ? 'danger' : 'success'"
+                    @click="togglePermissionStatus(scope.row)"
+                    :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
+                    circle
+                    :title="scope.row.status === 1 ? '禁用' : '启用'"
+                />
+                <el-button type="warning" @click="editPermission(scope.row)" icon="Edit" circle title="编辑" />
               </template>
             </el-table-column>
           </el-table>
@@ -67,21 +115,44 @@
   <el-dialog
       v-model="permissionModalVisible"
       :title="isEditing ? '编辑权限' : '添加权限'"
-      width="30%"
+      width="40%"
       center
   >
-    <el-form :model="permissionForm" label-width="100px">
-      <el-form-item label="权限名称">
+    <el-form :model="permissionForm" label-width="120px" :rules="formRules" ref="permissionFormRef">
+      <el-form-item label="权限编码" prop="code">
+        <el-input v-model="permissionForm.code" maxlength="30" show-word-limit />
+      </el-form-item>
+      <el-form-item label="权限名称" prop="name">
         <el-input v-model="permissionForm.name" maxlength="30" show-word-limit />
       </el-form-item>
-      <el-form-item label="路径">
-        <el-input v-model="permissionForm.path" maxlength="50" show-word-limit />
+      <el-form-item label="上级权限" prop="parentId">
+        <el-select v-model="permissionForm.parentId" placeholder="请选择上级权限" filterable clearable>
+          <el-option label="无上级权限" :value="0" />
+          <el-option
+              v-for="perm in parentPermissionOptions"
+              :key="perm.id"
+              :label="perm.name"
+              :value="perm.id"
+          />
+        </el-select>
       </el-form-item>
-      <el-form-item label="权限等级">
-        <el-select v-model="permissionForm.level">
-          <el-option label="一级" value="一级" />
-          <el-option label="二级" value="二级" />
-          <el-option label="三级" value="三级" />
+      <el-form-item label="权限类型" prop="type">
+        <el-select v-model="permissionForm.type" placeholder="请选择权限类型">
+          <el-option
+              v-for="type in typeOptions"
+              :key="type.value"
+              :label="type.label"
+              :value="type.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="敏感权限" prop="isSensitive">
+        <el-switch v-model="permissionForm.isSensitive" />
+      </el-form-item>
+      <el-form-item label="权限状态" prop="status">
+        <el-select v-model="permissionForm.status">
+          <el-option label="启用" :value="1" />
+          <el-option label="禁用" :value="0" />
         </el-select>
       </el-form-item>
     </el-form>
@@ -97,154 +168,307 @@
   <el-dialog
       v-model="viewPermissionModalVisible"
       title="权限详情"
-      width="30%"
+      width="40%"
       center
       class="permission-detail-dialog"
   >
     <div v-if="selectedPermission" class="permission-detail-content">
       <div class="detail-item">
+        <span class="detail-label">权限ID：</span>
+        <span class="detail-value">{{ selectedPermission.id }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">权限编码：</span>
+        <span class="detail-value">{{ selectedPermission.code }}</span>
+      </div>
+      <div class="detail-item">
         <span class="detail-label">权限名称：</span>
         <span class="detail-value">{{ selectedPermission.name }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">路径：</span>
-        <span class="detail-value">{{ selectedPermission.path }}</span>
+        <span class="detail-label">上级权限：</span>
+        <span class="detail-value">{{ selectedPermission.parentName }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">权限等级：</span>
-        <span class="detail-value">{{ selectedPermission.level }}</span>
+        <span class="detail-label">权限类型：</span>
+        <span class="detail-value">
+          <el-tag :type="getTypeTagType(selectedPermission.type)" size="small">
+            {{ selectedPermission.typeText }}
+          </el-tag>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">敏感权限：</span>
+        <span class="detail-value">
+          <el-tag :type="selectedPermission.isSensitive ? 'danger' : 'info'" size="small">
+            {{ selectedPermission.isSensitive ? '是' : '否' }}
+          </el-tag>
+        </span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">权限状态：</span>
+        <span class="detail-value">
+          <el-tag :type="selectedPermission.status === 1 ? 'success' : 'danger'" size="small">
+            {{ selectedPermission.statusText }}
+          </el-tag>
+        </span>
       </div>
     </div>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import {computed, onMounted, reactive, ref} from 'vue'
 import Layout from '@/components/Layout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import type {FormInstance} from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
+import {usePermissionStore} from '@/stores/permission'
 
-// Permission data
-const permissions = ref([
-  { id: 1, name: '商品管理', path: 'goods', level: '一级' },
-  { id: 2, name: '订单管理', path: 'orders', level: '一级' },
-  { id: 3, name: '权限管理', path: 'rights', level: '一级' },
-  { id: 4, name: '商品列表', path: 'goods/list', level: '二级' },
-  { id: 5, name: '添加商品', path: 'goods/add', level: '三级' },
-  { id: 6, name: '订单列表', path: 'orders/list', level: '二级' },
-  { id: 7, name: '添加订单', path: 'orders/add', level: '三级' },
-])
+// 使用权限状态管理
+const permissionStore = usePermissionStore()
 
-const loading = ref(false)
+// 表单引用
+const permissionFormRef = ref<FormInstance>()
+
+// 表单验证规则
+const formRules = {
+  code: [
+    { required: true, message: '请输入权限编码', trigger: 'blur' },
+    { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
+  ],
+  name: [
+    { required: true, message: '请输入权限名称', trigger: 'blur' },
+    { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
+  ],
+  type: [
+    { required: true, message: '请选择权限类型', trigger: 'change' }
+  ],
+  status: [
+    { required: true, message: '请选择权限状态', trigger: 'change' }
+  ]
+}
+
+// 权限类型选项
+const typeOptions = [
+  { value: 1, label: '菜单权限' },
+  { value: 2, label: '按钮权限' },
+]
+
+// 分页和筛选相关
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(permissions.value.length)
-const permissionLevel = ref('')
+const permissionStatus = ref('')
 const searchKeyword = ref('')
+const permissionType = ref('')
+const sensitivePermission = ref('')
+
+// 计算属性：获取权限列表和总数
+const permissionList = computed(() => permissionStore.permissionList)
+const total = computed(() => permissionStore.pagination.total)
+const loading = computed(() => permissionStore.loading)
+
+// 上级权限选项
+const parentPermissionOptions = ref([])
 
 // Permission modal related refs
 const permissionModalVisible = ref(false)
 const viewPermissionModalVisible = ref(false)
 const isEditing = ref(false)
-const permissionForm = reactive({
+
+interface Permission {
+  id: number | null;
+  code: string;
+  name: string;
+  parentId: number | null;
+  parentName?: string;
+  type: number;
+  typeText?: string;
+  isSensitive: boolean;
+  status: number;
+  statusText?: string;
+}
+
+// 修改权限表单的初始化
+const permissionForm = reactive<Permission>({
   id: null,
+  code: '',
   name: '',
-  path: '',
-  level: '一级',
+  parentId: null,
+  type: 1,
+  isSensitive: false,
+  status: 1 // 默认启用，值为1
 })
-const selectedPermission = ref(null)
+const selectedPermission = ref<Permission | null>(null)
 
-// Filter permissions based on search keyword and level
-const filteredPermissions = computed(() => {
-  let filtered = permissions.value
-
-  if (permissionLevel.value) {
-    filtered = filtered.filter(permission => permission.level === permissionLevel.value)
-  }
-
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    filtered = filtered.filter(permission =>
-        permission.name.toLowerCase().includes(keyword) ||
-        permission.path.toLowerCase().includes(keyword)
-    )
-  }
-
-  total.value = filtered.length
-  return filtered.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
+// 初始化加载数据
+onMounted(async () => {
+  await Promise.all([
+    fetchPermissions(),
+    fetchParentPermissionOptions()
+  ])
 })
 
-const handleCurrentChange = (val: number) => {
+// 获取权限列表
+const fetchPermissions = async () => {
+  const query = {
+    status: permissionStatus.value !== '' ? permissionStatus.value : undefined,
+    keyword: searchKeyword.value || undefined,
+    type: permissionType.value || undefined,
+    isSensitive: sensitivePermission.value !== '' ? sensitivePermission.value : undefined
+  }
+  await permissionStore.getPagingPermissionListAction(currentPage.value, pageSize.value, query)
+}
+
+// 获取上级权限选项
+const fetchParentPermissionOptions = async () => {
+  parentPermissionOptions.value = await permissionStore.getParentPermissionsAction()
+}
+
+// 处理分页变化
+const handleCurrentChange = async (val: number) => {
   currentPage.value = val
+  await fetchPermissions()
 }
 
-const handleSizeChange = (val: number) => {
+const handleSizeChange = async (val: number) => {
   pageSize.value = val
+  currentPage.value = 1 // 重置到第一页
+  await fetchPermissions()
 }
 
-const getLevelType = (level: string) => {
+// 搜索权限
+const handleSearch = async () => {
+  currentPage.value = 1 // 重置到第一页
+  await fetchPermissions()
+}
+
+// 重置搜索条件
+const resetSearch = async () => {
+  searchKeyword.value = ''
+  permissionStatus.value = ''
+  permissionType.value = ''
+  sensitivePermission.value = ''
+  currentPage.value = 1
+  await fetchPermissions()
+}
+
+// 获取权限类型标签类型
+const getTypeTagType = (type: number) => {
   const types = {
-    '一级': '',
-    '二级': 'success',
-    '三级': 'warning'
+    1: 'success',
+    2: 'warning'
   }
-  return types[level] || 'info'
+  return types[type] || 'info'
 }
 
+// 文本截断
+const truncateText = (text: string, maxLength: number) => {
+  if (!text) return ''
+  if (text.length <= maxLength) return text
+  return text.slice(0, maxLength) + '...'
+}
+
+// 显示添加权限模态框
 const showAddPermissionModal = () => {
   isEditing.value = false
   permissionForm.id = null
+  permissionForm.code = ''
   permissionForm.name = ''
-  permissionForm.path = ''
-  permissionForm.level = '一级'
+  permissionForm.parentId = null
+  permissionForm.type = 1
+  permissionForm.isSensitive = false
+  permissionForm.status = 1 // 默认启用，值为1
   permissionModalVisible.value = true
 }
 
-const editPermission = (permission) => {
+// 编辑权限
+const editPermission = (permission: Permission) => {
   isEditing.value = true
-  Object.assign(permissionForm, permission)
+  Object.assign(permissionForm, {
+    id: permission.id,
+    code: permission.code,
+    name: permission.name,
+    parentId: permission.parentId,
+    type: permission.type,
+    isSensitive: permission.isSensitive,
+    status: permission.status
+  })
   permissionModalVisible.value = true
 }
 
-const viewPermission = (permission) => {
-  selectedPermission.value = permission
-  viewPermissionModalVisible.value = true
-}
-
-const savePermission = () => {
-  if (isEditing.value) {
-    const index = permissions.value.findIndex(permission => permission.id === permissionForm.id)
-    if (index !== -1) {
-      permissions.value[index] = { ...permissionForm }
-      ElMessage.success('权限已更新')
-    }
-  } else {
-    const newPermission = {
-      ...permissionForm,
-      id: permissions.value.length + 1,
-    }
-    permissions.value.push(newPermission)
-    ElMessage.success('权限已添加')
+// 查看权限详情
+const viewPermission = async (permission: Permission) => {
+  try {
+    selectedPermission.value = permission
+    viewPermissionModalVisible.value = true
+  } catch (error) {
+    ElMessage.error('获取权限详情失败')
   }
-  permissionModalVisible.value = false
 }
 
-const deletePermission = (permission) => {
+// 切换权限状态（启用/禁用）
+const togglePermissionStatus = (permission: Permission) => {
+  const newStatus = permission.status === 1 ? 0 : 1
+  const actionText = newStatus === 1 ? '启用' : '禁用'
+
   ElMessageBox.confirm(
-      '确定要删除这个权限吗？',
-      '警告',
+      `确定要${actionText}该权限吗？`,
+      '提示',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
       }
-  ).then(() => {
-    const index = permissions.value.findIndex(p => p.id === permission.id)
-    if (index !== -1) {
-      permissions.value.splice(index, 1)
-      ElMessage.success('权限已删除')
+  ).then(async () => {
+    const success = await permissionStore.updatePermissionStatusAction(permission.id, newStatus)
+    if (success) {
+      ElMessage.success(`权限已${actionText}`)
+      await fetchPermissions()
+      await fetchParentPermissionOptions()
     }
   }).catch(() => {
-    ElMessage.info('已取消删除')
+    ElMessage.info('已取消操作')
+  })
+}
+
+// 保存权限（添加或更新）
+const savePermission = async () => {
+  if (!permissionFormRef.value) return
+
+  await permissionFormRef.value.validate(async (valid) => {
+    if (valid) {
+      if (isEditing.value && permissionForm.id !== null) {
+        // 更新���限
+        const success = await permissionStore.updatePermissionAction(permissionForm.id, {
+          code: permissionForm.code,
+          name: permissionForm.name,
+          parentId: permissionForm.parentId,
+          type: permissionForm.type,
+          isSensitive: permissionForm.isSensitive,
+          status: permissionForm.status
+        })
+        if (success) {
+          permissionModalVisible.value = false
+          await fetchPermissions()
+          await fetchParentPermissionOptions()
+        }
+      } else {
+        // 添加权限
+        const success = await permissionStore.addPermissionAction({
+          code: permissionForm.code,
+          name: permissionForm.name,
+          parentId: permissionForm.parentId,
+          type: permissionForm.type,
+          isSensitive: permissionForm.isSensitive,
+          status: permissionForm.status
+        })
+        if (success) {
+          permissionModalVisible.value = false
+          await fetchPermissions()
+          await fetchParentPermissionOptions()
+        }
+      }
+    }
   })
 }
 </script>
@@ -260,7 +484,7 @@ const deletePermission = (permission) => {
 
 .card-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #303133;
 }
@@ -275,6 +499,7 @@ const deletePermission = (permission) => {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .white-bg-input {
@@ -285,6 +510,47 @@ const deletePermission = (permission) => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Modal styles */
+:deep(.permission-detail-dialog) {
+  .el-dialog__header {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+
+    .el-dialog__title {
+      font-size: 20px;
+      font-weight: 600;
+    }
+  }
+
+  .el-dialog__body {
+    padding: 30px;
+  }
+}
+
+.permission-detail-content {
+  .detail-item {
+    margin-bottom: 25px;
+    line-height: 1.8;
+    font-size: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .detail-label {
+    font-weight: 600;
+    color: #333;
+    margin-right: 10px;
+    min-width: 90px;
+    display: inline-block;
+  }
+
+  .detail-value {
+    color: #666;
+  }
 }
 
 /* Dark theme adaptations */
@@ -316,52 +582,7 @@ const deletePermission = (permission) => {
   :deep(.el-table tr) {
     background-color: #1c1c1c;
   }
-}
 
-/* Modal styles */
-:deep(.permission-detail-dialog) {
-  .el-dialog__header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-
-    .el-dialog__title {
-      font-size: 20px;
-      font-weight: 600;
-    }
-  }
-
-  .el-dialog__body {
-    padding: 30px;
-  }
-}
-
-/* Content styles */
-.permission-detail-content {
-  .detail-item {
-    margin-bottom: 25px;
-    line-height: 1.8;
-    font-size: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .detail-label {
-    font-weight: 600;
-    color: #333;
-    margin-right: 10px;
-    min-width: 90px;
-    display: inline-block;
-  }
-
-  .detail-value {
-    color: #666;
-  }
-}
-
-/* Dark theme modal adaptations */
-:deep(.dark) {
   .permission-detail-content {
     .detail-label {
       color: #e5e7eb;
@@ -370,6 +591,18 @@ const deletePermission = (permission) => {
     .detail-value {
       color: #9ca3af;
     }
+  }
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+  .permission-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .white-bg-input {
+    width: 100%;
   }
 }
 </style>
