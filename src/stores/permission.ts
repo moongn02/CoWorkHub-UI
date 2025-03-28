@@ -6,7 +6,10 @@ import {
     addPermission,
     updatePermission,
     updatePermissionStatus,
-    getParentPermissions
+    getParentPermissions,
+    deletePermission,
+    getPermissionTree,
+    getPermissionTreeByIds
 } from '@/api/permission'
 import { ElMessage } from 'element-plus'
 
@@ -108,6 +111,46 @@ export const usePermissionStore = defineStore('permission', () => {
         }
     }
 
+    // 删除权限
+    const deletePermissionAction = async (id: number) => {
+        const res = await deletePermission(id)
+
+        const { success } = res.data
+        if (success) {
+            ElMessage.success('权限删除成功')
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
+    // 获取权限树
+    const getPermissionTreeAction = async () => {
+        const res = await getPermissionTree()
+
+        const { success, data } = res.data
+        if (success) {
+            return data
+        } else {
+            ElMessage.error(res.data.message)
+            return []
+        }
+    }
+
+    // 根据ID列表获取权限树
+    const getPermissionTreeByIdsAction = async (ids: number[]) => {
+        const res = await getPermissionTreeByIds(ids)
+
+        const { success, data } = res.data
+        if (success) {
+            return data
+        } else {
+            ElMessage.error(res.data.message)
+            return []
+        }
+    }
+
     return {
         permissionList,
         pagination,
@@ -117,6 +160,9 @@ export const usePermissionStore = defineStore('permission', () => {
         addPermissionAction,
         updatePermissionAction,
         updatePermissionStatusAction,
-        getParentPermissionsAction
+        getParentPermissionsAction,
+        deletePermissionAction,
+        getPermissionTreeAction,
+        getPermissionTreeByIdsAction
     }
 })

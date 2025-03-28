@@ -54,3 +54,28 @@ export function updatePermissionStatus(id: number, status: number) {
         method: 'patch',
     })
 }
+
+// 删除权限
+export function deletePermission(id: number) {
+    return request({
+        url: `/api/permission/delete/${id}`,
+        method: 'delete'
+    })
+}
+
+// 获取权限树结构
+export function getPermissionTree() {
+    return request({
+        url: '/api/permission/tree',
+        method: 'get'
+    })
+}
+
+// 根据ID列表获取权限树
+export function getPermissionTreeByIds(ids: number[]) {
+    return request({
+        url: '/api/permission/tree_by_ids',
+        method: 'post',
+        data: ids
+    })
+}

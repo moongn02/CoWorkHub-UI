@@ -3,10 +3,13 @@
     <template v-slot:content>
       <div class="role-management-container">
         <el-card class="role-card" shadow="hover">
-          <template #header>
+          <template v-slot:header>
             <div class="role-header">
               <h3 class="card-title">角色管理</h3>
-              <el-button type="primary" @click="showAddRoleModal">添加角色</el-button>
+              <div class="header-buttons">
+                <el-button type="danger" @click="batchDeleteRoles" :disabled="selectedRoles.length === 0">批量删除</el-button>
+                <el-button type="primary" @click="showAddRoleModal">添加角色</el-button>
+              </div>
             </div>
           </template>
 
@@ -27,7 +30,13 @@
           </div>
 
           <!-- Role table -->
-          <el-table :data="roleList" style="width: 100%" v-loading="loading">
+          <el-table
+              :data="roleList"
+              style="width: 100%"
+              v-loading="loading"
+              @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column label="角色名称" min-width="180">
               <template #default="scope">
@@ -50,7 +59,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="220" fixed="right">
+            <el-table-column label="操作" width="260" fixed="right">
               <template #default="scope">
                 <el-button type="success" @click="assignPermissions(scope.row)" icon="Setting" circle title="分配权限" />
                 <el-button type="primary" @click="viewRole(scope.row)" icon="View" circle title="查看" />
@@ -62,6 +71,7 @@
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
                 <el-button type="warning" @click="editRole(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button type="danger" @click="deleteRole(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -242,6 +252,9 @@ const loading = computed(() => roleStore.loading)
 const permissionTreeData = ref([])
 const rolePermissionsData = ref([])
 
+// 多选相关
+const selectedRoles = ref([])
+
 // 树形控件配置
 const defaultProps = {
   children: 'children',
@@ -358,7 +371,6 @@ const editRole = async (role: Role) => {
       permissionTreeRef.value.setCheckedKeys(rolePermissions.map(p => p.id))
     }
   } catch (error) {
-    console.error('获取角色权限失败', error)
     ElMessage.error('获取角色权限失败')
   }
 
@@ -378,7 +390,6 @@ const viewRole = async (role: Role) => {
 
     viewRoleModalVisible.value = true
   } catch (error) {
-    console.error('获取角色详情失败', error)
     ElMessage.error('获取角色详情失败')
   }
 }
@@ -394,7 +405,6 @@ const assignPermissions = async (role: Role) => {
       assignPermissionTreeRef.value.setCheckedKeys(rolePermissions.map(p => p.id))
     }
   } catch (error) {
-    console.error('获取角色权限失败', error)
     ElMessage.error('获取角色权限失败')
   }
 
@@ -418,10 +428,61 @@ const toggleRoleStatus = (role: Role) => {
     const success = await roleStore.updateRoleStatusAction(role.id, newStatus)
     if (success) {
       ElMessage.success(`角色已${actionText}`)
-      await fetchRoles() // 刷新数据
+      await fetchRoles()
     }
   }).catch(() => {
-    ElMessage.info('已取消操作')
+  })
+}
+
+// 删除角色
+const deleteRole = (role: Role) => {
+  ElMessageBox.confirm(
+      `确定要删除角色"${role.name}"吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const success = await roleStore.deleteRoleAction(role.id)
+    if (success) {
+      await fetchRoles()
+    }
+  }).catch(() => {
+  })
+}
+
+// 处理表格多选
+const handleSelectionChange = (selection) => {
+  selectedRoles.value = selection
+}
+
+// 批量删除角色
+const batchDeleteRoles = () => {
+  if (selectedRoles.value.length === 0) {
+    ElMessage.warning('请至少选择一个角色')
+    return
+  }
+
+  ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedRoles.value.length} 个角色吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const roleIds = selectedRoles.value.map(role => role.id)
+    const success = await roleStore.batchDeleteRolesAction(roleIds)
+    if (success) {
+      ElMessage.success(`已成功删除 ${selectedRoles.value.length} 个角色`)
+      selectedRoles.value = []
+      await fetchRoles()
+    }
+  }).catch(() => {
+
   })
 }
 
@@ -431,7 +492,6 @@ const saveRole = async () => {
 
   await roleFormRef.value.validate(async (valid) => {
     if (valid) {
-      // 获取选中的权限
       const checkedPermissions = permissionTreeRef.value ? permissionTreeRef.value.getCheckedKeys() : []
       const halfCheckedPermissions = permissionTreeRef.value ? permissionTreeRef.value.getHalfCheckedKeys() : []
       const allPermissions = [...checkedPermissions, ...halfCheckedPermissions]
@@ -446,7 +506,7 @@ const saveRole = async () => {
         })
         if (success) {
           roleModalVisible.value = false
-          await fetchRoles() // 刷新数据
+          await fetchRoles()
         }
       } else {
         // 添加角色
@@ -458,7 +518,7 @@ const saveRole = async () => {
         })
         if (success) {
           roleModalVisible.value = false
-          await fetchRoles() // 刷新数据
+          await fetchRoles()
         }
       }
     }
@@ -476,7 +536,7 @@ const saveAssignedPermissions = async () => {
 
   const success = await roleStore.updateRolePermissionsAction(selectedRole.value.id, allPermissions)
   if (success) {
-    ElMessage.success('权限分配成功')
+
     assignPermissionsModalVisible.value = false
   }
 }
@@ -502,6 +562,11 @@ const saveAssignedPermissions = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 
 .role-actions {
@@ -643,6 +708,10 @@ const saveAssignedPermissions = async () => {
 
   .white-bg-input {
     width: 100%;
+  }
+
+  .header-buttons {
+    flex-direction: column;
   }
 }
 </style>
