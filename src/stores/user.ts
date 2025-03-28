@@ -1,15 +1,37 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import {login, logout, register} from '@/api/auth'
-import type { LoginData} from '@/types/auth'
+import { login, logout, register } from '@/api/auth'
+import type { LoginData } from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
 import router from '@/router'
 import { ElMessage } from 'element-plus'
-import {changePassword, getEditUserInfo, getUserInfo, getUsers, updateUserInfo} from "@/api/user";
+import {
+  changePassword,
+  getEditUserInfo,
+  getUserInfo,
+  getUsers,
+  getPagingUserList,
+  addUser,
+  updateUser,
+  deleteUser,
+  batchDeleteUsers,
+  resetUserPassword,
+  updateUserStatus,
+  updateUserRole, updateUserInfo
+} from "@/api/user";
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
   const userInfo = ref<any>(null)
+
+  // 用户管理相关状态
+  const userList = ref<any[]>([])
+  const pagination = ref({
+    total: 0,
+    current: 1,
+    size: 10
+  })
+  const loading = ref(false)
 
   // 登录
   const loginAction = async (loginData: LoginData) => {
@@ -43,6 +65,7 @@ export const useUserStore = defineStore('user', () => {
   // 登出
   const logoutAction = async () => {
     try {
+      await logout()
       resetToken()
     } catch (error) {
       console.error('登出请求失败:', error)
@@ -81,7 +104,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 更新个人信息
-  const updateUserAction = async (updateData: any) => {
+  const updateUserInfoAction = async (updateData: any) => {
     const res = await updateUserInfo(updateData)
 
     const { success } = res.data
@@ -129,17 +152,143 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 用户管理相关 Actions
+
+  // 分页获取用户列表
+  const getPagingUserListAction = async (current: number, size: number, query?: any) => {
+    loading.value = true
+
+    const res = await getPagingUserList(current, size, query)
+    const { success, data } = res.data
+    if (success) {
+      userList.value = data.records
+      pagination.value = {
+        total: data.total,
+        current: data.current,
+        size: data.size
+      }
+      return data
+    } else {
+      ElMessage.error(res.data.message)
+    }
+
+    loading.value = false
+  }
+
+  // 添加用户
+  const addUserAction = async (userData: any) => {
+    const res = await addUser(userData)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('添加成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 更新用户
+  const updateUserAction = async (id: number, userData: any) => {
+    const res = await updateUser(id, userData)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('更新成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 删除用户
+  const deleteUserAction = async (id: number) => {
+    const res = await deleteUser(id)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('删除成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 批量删除用户
+  const batchDeleteUsersAction = async (ids: number[]) => {
+    const res = await batchDeleteUsers(ids)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('批量删除成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 重置用户密码
+  const resetUserPasswordAction = async (id: number) => {
+    const res = await resetUserPassword(id)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('重置密码成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 更新用户状态
+  const updateUserStatusAction = async (id: number, status: number) => {
+    const res = await updateUserStatus(id, status)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('更新成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
+  // 更新用户角色
+  const updateUserRoleAction = async (userId: number, roleId: number) => {
+    const res = await updateUserRole(userId, roleId)
+    const { success } = res.data
+    if (success) {
+      ElMessage.success('更新成功')
+      return true
+    } else {
+      ElMessage.error(res.data.message)
+      return false
+    }
+  }
+
   return {
     token,
     userInfo,
+    userList,
+    pagination,
+    loading,
     resetToken,
     loginAction,
     registerAction,
     logoutAction,
     getUserInfoAction,
     getEditUserInfoAction,
-    updateUserAction,
+    updateUserInfoAction,
     changePasswordAction,
-    getUsersAction
+    getUsersAction,
+    // 用户管理相关
+    getPagingUserListAction,
+    addUserAction,
+    updateUserAction,
+    deleteUserAction,
+    batchDeleteUsersAction,
+    resetUserPasswordAction,
+    updateUserStatusAction,
+    updateUserRoleAction
   }
 })

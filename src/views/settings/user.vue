@@ -1,6 +1,6 @@
 <template>
   <Layout>
-    <template v-slot:content>
+    <template #content>
       <div class="user-management-container">
         <el-card class="user-card" shadow="hover">
           <template #header>
@@ -18,7 +18,7 @@
             <el-cascader
                 v-model="departmentFilter"
                 :options="departmentOptions"
-                placeholder="所属部门"
+                placeholder="部门"
                 clearable
                 filterable
                 class="white-bg-input"
@@ -39,7 +39,7 @@
             </el-select>
             <el-input
                 v-model="searchKeyword"
-                placeholder="搜索用户"
+                placeholder="搜索用户关键词"
                 class="white-bg-input"
             />
             <el-button type="primary" @click="handleSearch">搜索</el-button>
@@ -212,32 +212,6 @@
     </template>
   </el-dialog>
 
-  <!-- Reset Password Modal -->
-  <el-dialog
-      v-model="resetPasswordModalVisible"
-      title="重置密码"
-      width="30%"
-      center
-  >
-    <div v-if="selectedUser" class="reset-password-content">
-      <h4>当前用户：{{ selectedUser.username }}</h4>
-      <el-form :model="resetPasswordForm" label-width="100px" :rules="resetPasswordRules" ref="resetPasswordFormRef">
-        <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="resetPasswordForm.newPassword" type="password" show-password />
-        </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="resetPasswordForm.confirmPassword" type="password" show-password />
-        </el-form-item>
-      </el-form>
-    </div>
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="resetPasswordModalVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveNewPassword">保存</el-button>
-      </span>
-    </template>
-  </el-dialog>
-
   <!-- View User Modal -->
   <el-dialog
       v-model="viewUserModalVisible"
@@ -313,7 +287,6 @@ const deptStore = useDeptStore()
 
 // 表单引用
 const userFormRef = ref<FormInstance>()
-const resetPasswordFormRef = ref<FormInstance>()
 
 // 表单验证规则
 const formRules = {
@@ -347,27 +320,6 @@ const formRules = {
   ]
 }
 
-// 重置密码表单验证规则
-const resetPasswordRules = {
-  newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6个字符', trigger: 'blur' }
-  ],
-  confirmPassword: [
-    { required: true, message: '请确认密码', trigger: 'blur' },
-    {
-      validator: (rule, value, callback) => {
-        if (value !== resetPasswordForm.newPassword) {
-          callback(new Error('两次输入密码不一致'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur'
-    }
-  ]
-}
-
 // 分页和筛选相关
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -391,7 +343,6 @@ const selectedUsers = ref([])
 // User modal related refs
 const userModalVisible = ref(false)
 const assignRoleModalVisible = ref(false)
-const resetPasswordModalVisible = ref(false)
 const viewUserModalVisible = ref(false)
 const isEditing = ref(false)
 
@@ -431,12 +382,6 @@ const selectedUser = ref<User | null>(null)
 // 分配角色表单
 const assignRoleForm = reactive({
   roleId: null
-})
-
-// 重置密码表单
-const resetPasswordForm = reactive({
-  newPassword: '',
-  confirmPassword: ''
 })
 
 // 初始化加载数据
@@ -578,12 +523,23 @@ const assignRole = (user: User) => {
   assignRoleModalVisible.value = true
 }
 
-// 重置密码
+// 重置密码 - 重置为默认密码
 const resetPassword = (user: User) => {
-  selectedUser.value = user
-  resetPasswordForm.newPassword = ''
-  resetPasswordForm.confirmPassword = ''
-  resetPasswordModalVisible.value = true
+  ElMessageBox.confirm(
+      `确定要将用户"${user.username}"的密码重置为默认密码吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const success = await userStore.resetUserPasswordAction(user.id)
+    if (success) {
+      ElMessage.success('密码已重置为默认密码')
+    }
+  }).catch(() => {
+  })
 }
 
 // 切换用户状态（启用/禁用）
@@ -688,19 +644,6 @@ const saveAssignedRole = async () => {
     await fetchUsers() // 刷新数据
   }
 }
-
-// 保存新密码
-const saveNewPassword = async () => {
-  if (!resetPasswordFormRef.value || !selectedUser.value) return
-
-  await resetPasswordFormRef.value.validate()
-
-  const success = await userStore.resetUserPasswordAction(selectedUser.value.id, resetPasswordForm.newPassword)
-  if (success) {
-    ElMessage.success('密码重置成功')
-    resetPasswordModalVisible.value = false
-  }
-}
 </script>
 
 <style scoped>
@@ -747,8 +690,7 @@ const saveNewPassword = async () => {
   justify-content: flex-end;
 }
 
-.assign-role-content h4,
-.reset-password-content h4 {
+.assign-role-content h4 {
   margin-top: 0;
   margin-bottom: 20px;
   color: #303133;
@@ -825,8 +767,7 @@ const saveNewPassword = async () => {
     background-color: #1c1c1c;
   }
 
-  .assign-role-content h4,
-  .reset-password-content h4 {
+  .assign-role-content h4 {
     color: #e5e7eb;
   }
 

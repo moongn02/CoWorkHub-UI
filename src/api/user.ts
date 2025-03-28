@@ -41,3 +41,77 @@ export function getUsers() {
         method: 'get',
     });
 }
+
+// 分页获取用户列表
+export function getPagingUserList(current: number, size: number, query?: any) {
+    return request({
+        url: `/api/user/page_list`,
+        method: 'get',
+        params: {
+            current,
+            size,
+            ...query
+        }
+    });
+}
+
+// 添加用户
+export function addUser(data: any) {
+    return request({
+        url: `/api/user/add`,
+        method: 'post',
+        data
+    });
+}
+
+// 更新用户
+export function updateUser(id: number, data: any) {
+    return request({
+        url: `/api/user/update/${id}`,
+        method: 'put',
+        data
+    });
+}
+
+// 删除用户
+export function deleteUser(id: number) {
+    return request({
+        url: `/api/user/${id}`,
+        method: 'delete'
+    });
+}
+
+// 批量删除用户
+export function batchDeleteUsers(ids: number[]) {
+    return request({
+        url: `/api/user/batch`,
+        method: 'delete',
+        data: { ids }
+    });
+}
+
+// 重置用户密码
+export function resetUserPassword(id: number) {
+    return request({
+        url: `/api/user/reset_password/${id}`,
+        method: 'put'
+    });
+}
+
+// 更新用户状态
+export function updateUserStatus(id: number, status: number) {
+    return request({
+        url: `/api/user/update_status/${id}`,
+        method: 'put',
+        params: { status }
+    });
+}
+
+// 更新用户角色
+export function updateUserRole(userId: number, roleId: number) {
+    return request({
+        url: `/api/user/update_role/${userId}`,
+        method: 'put',
+        params: { roleId }
+    });
+}

@@ -234,7 +234,7 @@ const handleEditSubmit = async () => {
   await editFormRef.value.validate()
   editForm.birthday = dayjs(editForm.birthday).format('YYYY-MM-DD');
 
-  const result = await userStore.updateUserAction(editForm)
+  const result = await userStore.updateUserInfoAction(editForm)
   if (result) {
     showEditDialog.value = false
     await fetchUserInfo()
