@@ -17,12 +17,24 @@
           <div class="user-actions">
             <el-cascader
                 v-model="departmentFilter"
-                :options="departmentOptions"
-                placeholder="部门"
+                :options="departmentTreeData"
+                placeholder="所属部门"
                 clearable
                 filterable
+                :props="{
+                  checkStrictly: true,
+                  label: 'name',
+                  value: 'id',
+                  emitPath: false
+                }"
                 class="white-bg-input"
-            />
+            >
+              <template #default="{ node, data }">
+                <div @click="handleOptionClickSearch(node, data)">
+                  {{ data.name }}
+                </div>
+              </template>
+            </el-cascader>
             <el-select v-model="roleFilter" placeholder="角色" class="white-bg-input" clearable>
               <el-option label="全部" value="" />
               <el-option
@@ -57,13 +69,9 @@
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="username" label="用户名" min-width="120" />
             <el-table-column prop="realName" label="真实姓名" min-width="120" />
-            <el-table-column prop="roleName" label="角色" min-width="120" />
-            <el-table-column prop="departmentName" label="部门" min-width="120" />
-            <el-table-column label="性别" width="80">
-              <template #default="scope">
-                {{ scope.row.gender === 1 ? '男' : scope.row.gender === 2 ? '女' : '未知' }}
-              </template>
-            </el-table-column>
+            <el-table-column prop="role" label="角色" min-width="120" />
+            <el-table-column prop="deptText" label="部门" min-width="120" />
+            <el-table-column prop="genderText" label="性别" width="80"/>
             <el-table-column prop="email" label="邮箱地址" min-width="180" />
             <el-table-column prop="phone" label="电话号码" min-width="120" />
             <el-table-column prop="birthday" label="出生日期" min-width="120" />
@@ -136,20 +144,32 @@
           />
         </el-select>
       </el-form-item>
-      <el-form-item label="部门" prop="deptId">
+      <el-form-item label="所属部门" prop="deptId">
         <el-cascader
             v-model="userForm.deptId"
-            :options="departmentOptions"
-            placeholder="请选择部门"
-            filterable
+            :options="departmentTreeData"
+            placeholder="请选择所属部门"
             clearable
-        />
+            filterable
+            :props="{
+              checkStrictly: true,
+              label: 'name',
+              value: 'id',
+              emitPath: false
+            }"
+            class="white-bg-input"
+        >
+          <template #default="{ node, data }">
+            <div @click="handleOptionClickSave(node, data)">
+              {{ data.name }}
+            </div>
+          </template>
+        </el-cascader>
       </el-form-item>
       <el-form-item label="性别" prop="gender">
         <el-select v-model="userForm.gender">
-          <el-option label="男" :value="1" />
-          <el-option label="女" :value="2" />
-          <el-option label="未知" :value="0" />
+          <el-option label="男" :value="0" />
+          <el-option label="女" :value="1" />
         </el-select>
       </el-form-item>
       <el-form-item label="邮箱地址" prop="email">
@@ -239,7 +259,7 @@
       </div>
       <div class="detail-item">
         <span class="detail-label">部门：</span>
-        <span class="detail-value">{{ selectedUser.departmentName }}</span>
+        <span class="detail-value">{{ selectedUser.deptText }}</span>
       </div>
       <div class="detail-item">
         <span class="detail-label">性别：</span>
@@ -335,10 +355,10 @@ const loading = computed(() => userStore.loading)
 
 // 角色和部门数据
 const roles = computed(() => roleStore.roleList)
-const departmentOptions = computed(() => deptStore.departmentTreeOptions)
 
 // 多选相关
 const selectedUsers = ref([])
+const departmentTreeData = ref([])
 
 // User modal related refs
 const userModalVisible = ref(false)
@@ -354,8 +374,9 @@ interface User {
   email: string;
   phone: string;
   deptId: number | null;
-  departmentName?: string;
+  deptText?: string;
   gender: number;
+  genderText?: string;
   birthday: string;
   roleId: number | null;
   roleName?: string;
@@ -374,23 +395,30 @@ const userForm = reactive<User>({
   gender: 0,
   birthday: '',
   roleId: null,
-  status: 1 // 默认启用，值为1
+  status: 1
 })
-
 const selectedUser = ref<User | null>(null)
-
-// 分配角色表单
-const assignRoleForm = reactive({
-  roleId: null
-})
 
 // 初始化加载数据
 onMounted(async () => {
   await Promise.all([
     fetchUsers(),
     fetchRoles(),
-    fetchDepartments()
+    fetchDepartmentTree()
   ])
+})
+
+const handleOptionClickSearch = (node, data) => {
+  departmentFilter.value = data.id;
+};
+
+const handleOptionClickSave = (node, data) => {
+  userForm.deptId = data.id;
+};
+
+// 分配角色表单
+const assignRoleForm = reactive({
+  roleId: null
 })
 
 // 获取用户列表
@@ -409,9 +437,9 @@ const fetchRoles = async () => {
   await roleStore.getAllRolesAction()
 }
 
-// 获取部门列表
-const fetchDepartments = async () => {
-  await deptStore.getDepartmentTreeAction()
+// 获取部门树
+const fetchDepartmentTree = async () => {
+  departmentTreeData.value = await deptStore.getDepartmentTreeAction()
 }
 
 // 处理分页变化
@@ -591,46 +619,43 @@ const deleteUser = (user: User) => {
 const saveUser = async () => {
   if (!userFormRef.value) return
 
-  await userFormRef.value.validate(async (valid) => {
-    if (valid) {
-      if (isEditing.value && userForm.id !== null) {
-        // 更新用户
-        const success = await userStore.updateUserAction(userForm.id, {
-          username: userForm.username,
-          realName: userForm.realName,
-          email: userForm.email,
-          phone: userForm.phone,
-          deptId: userForm.deptId,
-          gender: userForm.gender,
-          birthday: userForm.birthday,
-          roleId: userForm.roleId,
-          status: userForm.status
-        })
-        if (success) {
-          userModalVisible.value = false
-          await fetchUsers() // 刷新数据
-        }
-      } else {
-        // 添加用户
-        const success = await userStore.addUserAction({
-          username: userForm.username,
-          password: userForm.password,
-          realName: userForm.realName,
-          email: userForm.email,
-          phone: userForm.phone,
-          deptId: userForm.deptId,
-          gender: userForm.gender,
-          birthday: userForm.birthday,
-          roleId: userForm.roleId,
-          status: userForm.status
-        })
-        if (success) {
-          userModalVisible.value = false
-          await fetchUsers() // 刷新数据
-        }
-      }
+  await userFormRef.value.validate()
+  if (isEditing.value && userForm.id !== null) {
+    // 更新用户
+    const success = await userStore.updateUserAction(userForm.id, {
+      username: userForm.username,
+      realName: userForm.realName,
+      email: userForm.email,
+      phone: userForm.phone,
+      deptId: userForm.deptId,
+      gender: userForm.gender,
+      birthday: userForm.birthday,
+      roleId: userForm.roleId,
+      status: userForm.status
+    })
+    if (success) {
+      userModalVisible.value = false
+      await fetchUsers() // 刷新数据
     }
-  })
+  } else {
+    // 添加用户
+    const success = await userStore.addUserAction({
+      username: userForm.username,
+      password: userForm.password,
+      realName: userForm.realName,
+      email: userForm.email,
+      phone: userForm.phone,
+      deptId: userForm.deptId,
+      gender: userForm.gender,
+      birthday: userForm.birthday,
+      roleId: userForm.roleId,
+      status: userForm.status
+    })
+    if (success) {
+      userModalVisible.value = false
+      await fetchUsers() // 刷新数据
+    }
+  }
 }
 
 // 保存分配的角色

@@ -20,7 +20,7 @@
                 <el-descriptions-item label="手机">{{ userInfo.phone }}</el-descriptions-item>
                 <el-descriptions-item label="邮箱">{{ userInfo.email }}</el-descriptions-item>
                 <el-descriptions-item label="生日">{{ userInfo.birthday }}</el-descriptions-item>
-                <el-descriptions-item label="性别">{{ userInfo.gender }}</el-descriptions-item>
+                <el-descriptions-item label="性别">{{ userInfo.genderText }}</el-descriptions-item>
               </el-descriptions>
             </div>
 
@@ -28,7 +28,7 @@
             <div class="info-section">
               <h4 class="section-title">工作信息</h4>
               <el-descriptions :column="2" border>
-                <el-descriptions-item label="部门">{{ userInfo.department }}</el-descriptions-item>
+                <el-descriptions-item label="部门">{{ userInfo.deptText }}</el-descriptions-item>
                 <el-descriptions-item label="直属上级">{{ userInfo.supervisor }}</el-descriptions-item>
               </el-descriptions>
             </div>
@@ -169,7 +169,9 @@ const userInfo = reactive({
   email: '',
   birthday: '',
   gender: '',
-  department: '',
+  genderText: '',
+  deptId: '',
+  deptText: '',
   supervisor: null
 })
 

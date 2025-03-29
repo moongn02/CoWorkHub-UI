@@ -157,8 +157,9 @@ export const useUserStore = defineStore('user', () => {
   // 分页获取用户列表
   const getPagingUserListAction = async (current: number, size: number, query?: any) => {
     loading.value = true
-
     const res = await getPagingUserList(current, size, query)
+    loading.value = false
+
     const { success, data } = res.data
     if (success) {
       userList.value = data.records
@@ -171,8 +172,6 @@ export const useUserStore = defineStore('user', () => {
     } else {
       ElMessage.error(res.data.message)
     }
-
-    loading.value = false
   }
 
   // 添加用户
