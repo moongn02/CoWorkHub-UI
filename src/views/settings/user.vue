@@ -69,7 +69,7 @@
             <el-table-column prop="id" label="ID" width="80" />
             <el-table-column prop="username" label="用户名" min-width="120" />
             <el-table-column prop="realName" label="真实姓名" min-width="120" />
-            <el-table-column prop="role" label="角色" min-width="120" />
+            <el-table-column prop="roleName" label="角色" min-width="120" />
             <el-table-column prop="deptText" label="部门" min-width="120" />
             <el-table-column prop="genderText" label="性别" width="80"/>
             <el-table-column prop="email" label="邮箱地址" min-width="180" />
@@ -353,8 +353,8 @@ const userList = computed(() => userStore.userList)
 const total = computed(() => userStore.pagination.total)
 const loading = computed(() => userStore.loading)
 
-// 角色和部门数据
-const roles = computed(() => roleStore.roleList)
+// 角色数据
+const roles = ref([])
 
 // 多选相关
 const selectedUsers = ref([])
@@ -434,7 +434,7 @@ const fetchUsers = async () => {
 
 // 获取角色列表
 const fetchRoles = async () => {
-  await roleStore.getAllRolesAction()
+  roles.value = await roleStore.getAllRolesAction()
 }
 
 // 获取部门树

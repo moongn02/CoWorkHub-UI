@@ -19,6 +19,16 @@ export function getPagingRoleList(current: number, size: number, query: any = {}
 }
 
 /**
+ * 获取角色列表
+ */
+export function getAllRoles() {
+    return request({
+        url: '/api/role/list',
+        method: 'get'
+    })
+}
+
+/**
  * 获取角色详情
  * @param id 角色ID
  */

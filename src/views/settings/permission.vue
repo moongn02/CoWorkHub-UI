@@ -57,7 +57,7 @@
             <el-table-column label="权限类型" width="120">
               <template #default="scope">
                 <el-tag :type="getTypeTagType(scope.row.type)">
-                  {{ scope.row.typeName }}
+                  {{ scope.row.typeText }}
                 </el-tag>
               </template>
             </el-table-column>

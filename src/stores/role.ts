@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import {
     getPagingRoleList,
     getRoleDetail,
+    getAllRoles,
     addRole,
     updateRole,
     updateRoleStatus,
@@ -41,6 +42,19 @@ export const useRoleStore = defineStore('role', () => {
         } else {
             ElMessage.error(res.data.message)
             return null
+        }
+    }
+
+    // 获取角色列表
+    const getAllRolesAction = async () => {
+        const res = await getAllRoles()
+
+        const { success, data } = res.data
+        if (success) {
+            return data
+        } else {
+            ElMessage.error(res.data.message)
+            return []
         }
     }
 
@@ -157,6 +171,7 @@ export const useRoleStore = defineStore('role', () => {
         pagination,
         loading,
         getPagingRoleListAction,
+        getAllRolesAction,
         getRoleDetailAction,
         addRoleAction,
         updateRoleAction,
