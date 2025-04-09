@@ -6,7 +6,10 @@
           <template #header>
             <div class="permission-header">
               <h3 class="card-title">权限管理</h3>
-              <el-button type="primary" @click="showAddPermissionModal">添加权限</el-button>
+              <div class="header-buttons">
+                <el-button type="danger" @click="batchDeletePermissions" :disabled="selectedPermissions.length === 0">批量删除</el-button>
+                <el-button type="primary" @click="showAddPermissionModal">添加权限</el-button>
+              </div>
             </div>
           </template>
 
@@ -43,7 +46,13 @@
           </div>
 
           <!-- Permission table -->
-          <el-table :data="permissionList" style="width: 100%" v-loading="loading">
+          <el-table
+              :data="permissionList"
+              style="width: 100%"
+              v-loading="loading"
+              @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="权限ID" width="150" />
             <el-table-column prop="code" label="权限编码" min-width="180" />
             <el-table-column label="权限名称" min-width="200">
@@ -75,7 +84,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
                 <el-button type="primary" @click="viewPermission(scope.row)" icon="View" circle title="查看" />
                 <el-button
@@ -86,6 +95,7 @@
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
                 <el-button type="warning" @click="editPermission(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button type="danger" @click="deletePermission(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -256,6 +266,9 @@ const loading = computed(() => permissionStore.loading)
 // 上级权限选项
 const parentPermissionOptions = ref([])
 
+// 多选相关
+const selectedPermissions = ref([])
+
 // Permission modal related refs
 const permissionModalVisible = ref(false)
 const viewPermissionModalVisible = ref(false)
@@ -308,6 +321,11 @@ const fetchPermissions = async () => {
 // 获取上级权限选项
 const fetchParentPermissionOptions = async () => {
   parentPermissionOptions.value = await permissionStore.getParentPermissionsAction()
+}
+
+// 处理表格多选
+const handleSelectionChange = (selection) => {
+  selectedPermissions.value = selection
 }
 
 // 处理分页变化
@@ -457,6 +475,57 @@ const savePermission = async () => {
     }
   })
 }
+
+// 删除权限
+const deletePermission = (permission: Permission) => {
+  ElMessageBox.confirm(
+      `确定要删除权限"${permission.name}"吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const success = await permissionStore.deletePermissionAction(permission.id)
+    if (success) {
+      ElMessage.success('权限已删除')
+      await fetchPermissions()
+      await fetchParentPermissionOptions()
+    }
+  }).catch(() => {
+    ElMessage.info('已取消删除')
+  })
+}
+
+// 批量删除权限
+const batchDeletePermissions = () => {
+  if (selectedPermissions.value.length === 0) {
+    ElMessage.warning('请至少选择一个权限')
+    return
+  }
+
+  ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedPermissions.value.length} 个权限吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const permissionIds = selectedPermissions.value.map(permission => permission.id)
+    const success = await permissionStore.batchDeletePermissionsAction(permissionIds)
+    if (success) {
+      ElMessage.success(`已成功删除 ${selectedPermissions.value.length} 个权限`)
+      selectedPermissions.value = []
+      await fetchPermissions() // 刷新数据
+      await fetchParentPermissionOptions() // 刷新上级权限选项
+    }
+  }).catch(() => {
+    ElMessage.info('已取消删除')
+  })
+}
 </script>
 
 <style scoped>
@@ -479,6 +548,11 @@ const savePermission = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px;
 }
 
 .permission-actions {
@@ -589,6 +663,10 @@ const savePermission = async () => {
 
   .white-bg-input {
     width: 100%;
+  }
+
+  .header-buttons {
+    flex-direction: column;
   }
 }
 </style>

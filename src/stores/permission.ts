@@ -8,6 +8,7 @@ import {
     updatePermissionStatus,
     getParentPermissions,
     deletePermission,
+    batchDeletePermissions,
     getPermissionTree,
     getPermissionTreeByIds
 } from '@/api/permission'
@@ -117,7 +118,20 @@ export const usePermissionStore = defineStore('permission', () => {
 
         const { success } = res.data
         if (success) {
-            ElMessage.success('权限删除成功')
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
+    // 批量删除权限
+    const batchDeletePermissionsAction = async (ids: number[]) => {
+        const res = await batchDeletePermissions(ids)
+
+        const { success } = res.data
+        if (success) {
+            ElMessage.success('批量删除成功')
             return true
         } else {
             ElMessage.error(res.data.message)
@@ -162,6 +176,7 @@ export const usePermissionStore = defineStore('permission', () => {
         updatePermissionStatusAction,
         getParentPermissionsAction,
         deletePermissionAction,
+        batchDeletePermissionsAction,
         getPermissionTreeAction,
         getPermissionTreeByIdsAction
     }

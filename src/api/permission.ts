@@ -51,15 +51,24 @@ export function updatePermission(id: number, data: any) {
 export function updatePermissionStatus(id: number, status: number) {
     return request({
         url: `/api/permission/update_status/${id}?status=${status}`,
-        method: 'patch',
+        method: 'put',
     })
 }
 
 // 删除权限
 export function deletePermission(id: number) {
     return request({
-        url: `/api/permission/delete/${id}`,
+        url: `/api/permission/${id}`,
         method: 'delete'
+    })
+}
+
+// 批量删除权限
+export function batchDeletePermissions(ids: number[]) {
+    return request({
+        url: '/api/permission/batch',
+        method: 'delete',
+        data: { ids }
     })
 }
 
