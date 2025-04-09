@@ -47,6 +47,23 @@ export function updateProjectStatus(id: number, status: number) {
     })
 }
 
+// 删除项目
+export function deleteProject(id: number) {
+    return request({
+        url: `/api/project/${id}`,
+        method: 'delete'
+    })
+}
+
+// 批量删除项目
+export function batchDeleteProjects(ids: number[]) {
+    return request({
+        url: '/api/project/batch',
+        method: 'delete',
+        data: { ids }
+    })
+}
+
 // 获取所有一级项目（parent_id = 0）
 export function getParentProjects() {
     return request({

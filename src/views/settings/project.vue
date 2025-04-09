@@ -6,7 +6,10 @@
           <template #header>
             <div class="project-header">
               <h3 class="card-title">项目管理</h3>
-              <el-button type="primary" @click="showAddProjectModal">添加项目</el-button>
+              <div class="header-buttons">
+                <el-button type="danger" @click="batchDeleteProjects" :disabled="selectedProjects.length === 0">批量删除</el-button>
+                <el-button type="primary" @click="showAddProjectModal">添加项目</el-button>
+              </div>
             </div>
           </template>
 
@@ -62,7 +65,13 @@
           </div>
 
           <!-- Project table -->
-          <el-table :data="projectList" style="width: 100%" v-loading="loading">
+          <el-table
+              :data="projectList"
+              style="width: 100%"
+              v-loading="loading"
+              @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="ID" width="100" />
             <el-table-column label="项目名称" min-width="200">
               <template #default="scope">
@@ -72,8 +81,8 @@
               </template>
             </el-table-column>
             <el-table-column prop="parentName" label="父级项目" min-width="180" />
-            <el-table-column prop="departmentName" label="所属部门" min-width="170" />
-            <el-table-column prop="updaterName" label="最后更新人" min-width="170" />
+            <el-table-column prop="departmentName" label="所属部门" min-width="150" />
+            <el-table-column prop="updaterName" label="最后更新人" min-width="150" />
             <el-table-column label="状态" width="150">
               <template #default="scope">
                 <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
@@ -81,7 +90,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
                 <el-button type="primary" @click="viewProject(scope.row)" icon="View" circle title="查看" />
                 <el-button
@@ -92,6 +101,7 @@
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
                 <el-button type="warning" @click="editProject(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button type="danger" @click="deleteProject(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -263,6 +273,8 @@ const departmentOptions = ref([])
 const departmentTreeData = ref([])
 // 父级项目选项
 const parentProjectOptions = ref([])
+// 批量删除多选
+const selectedProjects = ref([]);
 
 // Project modal related refs
 const projectModalVisible = ref(false)
@@ -299,6 +311,10 @@ const handleOptionClickSearch = (node, data) => {
 
 const handleOptionClickSave = (node, data) => {
   projectForm.departmentId = data.id;
+};
+
+const handleSelectionChange = (val) => {
+  selectedProjects.value = val;
 };
 
 // 初始化加载数据
@@ -462,6 +478,55 @@ const saveProject = async () => {
       await fetchProjects()
       await fetchParentProjectOptions()
     }
+  })
+}
+
+// 删除项目
+const deleteProject = (project: Project) => {
+  ElMessageBox.confirm(
+      `确定要删除权限"${project.name}"吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const success = await projectStore.deleteProjectAction(project.id)
+    if (success) {
+      ElMessage.success('权限已删除')
+      await fetchProjects()
+      await fetchParentProjectOptions()
+    }
+  }).catch(() => {
+  })
+}
+
+// 批量删除项目
+const batchDeleteProjects = () => {
+  if (selectedProjects.value.length === 0) {
+    ElMessage.warning('请至少选择一个权限')
+    return
+  }
+
+  ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedProjects.value.length} 个权限吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const projectIds = selectedProjects.value.map(project => project.id)
+    const success = await projectStore.batchDeleteProjectsAction(projectIds)
+    if (success) {
+      ElMessage.success(`已成功删除 ${selectedProjects.value.length} 个权限`)
+      selectedProjects.value = []
+      await fetchProjects()
+      await fetchParentProjectOptions()
+    }
+  }).catch(() => {
   })
 }
 </script>

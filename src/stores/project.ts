@@ -6,7 +6,9 @@ import {
     addProject,
     updateProject,
     updateProjectStatus,
-    getParentProjects
+    getParentProjects,
+    deleteProject,
+    batchDeleteProjects
 } from '@/api/project'
 import { ElMessage } from 'element-plus'
 
@@ -95,6 +97,32 @@ export const useProjectStore = defineStore('project', () => {
         }
     }
 
+    // 删除项目
+    const deleteProjectAction = async (id: number) => {
+        const res = await deleteProject(id)
+
+        const { success } = res.data
+        if (success) {
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
+    // 批量删除项目
+    const batchDeleteProjectsAction = async (ids: number[]) => {
+        const res = await batchDeleteProjects(ids)
+
+        const { success } = res.data
+        if (success) {
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
     // 获取所有一级项目（parent_id = 0的项目）
     const getParentProjectsAction = async () => {
         const res = await getParentProjects()
@@ -117,6 +145,8 @@ export const useProjectStore = defineStore('project', () => {
         addProjectAction,
         updateProjectAction,
         updateProjectStatusAction,
+        deleteProjectAction,
+        batchDeleteProjectsAction,
         getParentProjectsAction,
     }
 })
