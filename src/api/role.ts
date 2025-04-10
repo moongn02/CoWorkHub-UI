@@ -71,7 +71,7 @@ export function updateRole(id: number, roleData: any) {
  */
 export function updateRoleStatus(id: number, status: number) {
     return request({
-        url: `/api/roles/update_status/${id}?status=${status}`,
+        url: `/api/role/update_status/${id}?status=${status}`,
         method: 'put',
     })
 }
@@ -82,7 +82,7 @@ export function updateRoleStatus(id: number, status: number) {
  */
 export function deleteRole(id: number) {
     return request({
-        url: `/api/roles/${id}`,
+        url: `/api/role/${id}`,
         method: 'delete'
     })
 }
@@ -93,7 +93,7 @@ export function deleteRole(id: number) {
  */
 export function batchDeleteRoles(ids: number[]) {
     return request({
-        url: '/api/roles/batch',
+        url: '/api/role/batch',
         method: 'delete',
         data: { ids }
     })
