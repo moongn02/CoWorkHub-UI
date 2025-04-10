@@ -6,7 +6,10 @@
           <template #header>
             <div class="department-header">
               <h3 class="card-title">部门管理</h3>
-              <el-button type="primary" @click="showAddDepartmentModal">添加部门</el-button>
+              <div class="header-buttons">
+                <el-button type="danger" @click="batchDeleteDepartments" :disabled="selectedDepartments.length === 0">批量删除</el-button>
+                <el-button type="primary" @click="showAddDepartmentModal">添加部门</el-button>
+              </div>
             </div>
           </template>
 
@@ -43,7 +46,12 @@
           </div>
 
           <!-- Department table -->
-          <el-table :data="departmentList" style="width: 100%" v-loading="loading">
+          <el-table :data="departmentList"
+                    style="width: 100%"
+                    v-loading="loading"
+                    @selection-change="handleSelectionChange"
+          >
+            <el-table-column type="selection" width="55" />
             <el-table-column prop="id" label="ID" width="150" />
             <el-table-column label="部门名称" min-width="200">
               <template #default="scope">
@@ -61,7 +69,7 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
                 <el-button type="primary" @click="viewDepartment(scope.row)" icon="View" circle title="查看" />
                 <el-button
@@ -72,6 +80,7 @@
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
                 <el-button type="warning" @click="editDepartment(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button type="danger" @click="deleteDepartment(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -236,6 +245,8 @@ const loading = computed(() => deptStore.loading)
 const leaderOptions = ref([])
 // 上级部门选项
 const parentDepartmentOptions = ref([])
+// 批量删除多选
+const selectedDepartments = ref([]);
 
 // Department modal related refs
 const departmentModalVisible = ref(false)
@@ -264,6 +275,10 @@ const departmentForm = reactive<Department>({
   description: ''
 })
 const selectedDepartment = ref<Department | null>(null)
+
+const handleSelectionChange = (val) => {
+  selectedDepartments.value = val;
+};
 
 // 初始化加载数据
 onMounted(async () => {
@@ -433,6 +448,57 @@ const saveDepartment = async () => {
   await fetchDepartments()
   await fetchLeaderOptions()
   await fetchParentDepartmentOptions()
+}
+
+// 删除部门
+const deleteDepartment = (department: Department) => {
+  ElMessageBox.confirm(
+      `确定要删除部门"${department.name}"吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const success = await deptStore.deleteDepartmentAction(department.id)
+    if (success) {
+      ElMessage.success('部门已删除')
+      await fetchDepartments()
+      await fetchLeaderOptions()
+      await fetchParentDepartmentOptions()
+    }
+  }).catch(() => {
+  })
+}
+
+// 批量删除项目
+const batchDeleteDepartments = () => {
+  if (selectedDepartments.value.length === 0) {
+    ElMessage.warning('请至少选择一个部门')
+    return
+  }
+
+  ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedDepartments.value.length} 个部门吗？此操作不可恢复！`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+  ).then(async () => {
+    const projectIds = selectedDepartments.value.map(department => department.id)
+    const success = await deptStore.batchDeleteDepartmentsAction(projectIds)
+    if (success) {
+      ElMessage.success(`已成功删除 ${selectedDepartments.value.length} 个部门`)
+      selectedDepartments.value = []
+      await fetchDepartments()
+      await fetchLeaderOptions()
+      await fetchParentDepartmentOptions()
+    }
+  }).catch(() => {
+  })
 }
 </script>
 

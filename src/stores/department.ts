@@ -7,7 +7,9 @@ import {
     updateDepartment,
     updateDepartmentStatus,
     getParentDepartments,
-    getDepartmentTree
+    getDepartmentTree,
+    deleteDepartment,
+    batchDeleteDepartments
 } from '@/api/department'
 import { ElMessage } from 'element-plus'
 
@@ -97,6 +99,32 @@ export const useDeptStore = defineStore('department', () => {
         }
     }
 
+    // 删除部门
+    const deleteDepartmentAction = async (id: number) => {
+        const res = await deleteDepartment(id)
+
+        const { success } = res.data
+        if (success) {
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
+    // 批量删除部门
+    const batchDeleteDepartmentsAction = async (ids: number[]) => {
+        const res = await batchDeleteDepartments(ids)
+
+        const { success } = res.data
+        if (success) {
+            return true
+        } else {
+            ElMessage.error(res.data.message)
+            return false
+        }
+    }
+
     // 获取所有一级部门（parent_id = 0）
     const getParentDepartmentsAction = async () => {
         const res = await getParentDepartments()
@@ -135,6 +163,8 @@ export const useDeptStore = defineStore('department', () => {
         addDepartmentAction,
         updateDepartmentAction,
         updateDepartmentStatusAction,
+        deleteDepartmentAction,
+        batchDeleteDepartmentsAction,
         getParentDepartmentsAction,
         getDepartmentTreeAction
     }

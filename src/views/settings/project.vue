@@ -484,7 +484,7 @@ const saveProject = async () => {
 // 删除项目
 const deleteProject = (project: Project) => {
   ElMessageBox.confirm(
-      `确定要删除权限"${project.name}"吗？此操作不可恢复！`,
+      `确定要删除项目"${project.name}"吗？此操作不可恢复！`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -494,7 +494,7 @@ const deleteProject = (project: Project) => {
   ).then(async () => {
     const success = await projectStore.deleteProjectAction(project.id)
     if (success) {
-      ElMessage.success('权限已删除')
+      ElMessage.success('项目已删除')
       await fetchProjects()
       await fetchParentProjectOptions()
     }
@@ -505,12 +505,12 @@ const deleteProject = (project: Project) => {
 // 批量删除项目
 const batchDeleteProjects = () => {
   if (selectedProjects.value.length === 0) {
-    ElMessage.warning('请至少选择一个权限')
+    ElMessage.warning('请至少选择一个项目')
     return
   }
 
   ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedProjects.value.length} 个权限吗？此操作不可恢复！`,
+      `确定要删除选中的 ${selectedProjects.value.length} 个项目吗？此操作不可恢复！`,
       '警告',
       {
         confirmButtonText: '确定',
@@ -521,7 +521,7 @@ const batchDeleteProjects = () => {
     const projectIds = selectedProjects.value.map(project => project.id)
     const success = await projectStore.batchDeleteProjectsAction(projectIds)
     if (success) {
-      ElMessage.success(`已成功删除 ${selectedProjects.value.length} 个权限`)
+      ElMessage.success(`已成功删除 ${selectedProjects.value.length} 个项目`)
       selectedProjects.value = []
       await fetchProjects()
       await fetchParentProjectOptions()

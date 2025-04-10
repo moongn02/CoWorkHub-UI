@@ -47,6 +47,23 @@ export function updateDepartmentStatus(id: number, status: number) {
     })
 }
 
+// 删除部门
+export function deleteDepartment(id: number) {
+    return request({
+        url: `/api/department/${id}`,
+        method: 'delete'
+    })
+}
+
+// 批量删除部门
+export function batchDeleteDepartments(ids: number[]) {
+    return request({
+        url: '/api/department/batch',
+        method: 'delete',
+        data: { ids }
+    })
+}
+
 // 获取所有一级部门（parent_id = 0）
 export function getParentDepartments() {
     return request({
