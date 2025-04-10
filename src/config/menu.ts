@@ -1,8 +1,7 @@
 // src/config/menu.ts
 import {
     House,
-    Plus,
-    Search,
+    Odometer,
     Aim,
     Operation,
     Document,
@@ -24,22 +23,27 @@ export const menuList: MenuItem[] = [
         }
     },
     {
-        path: '/task/create',
-        title: '创建任务',
-        icon: 'Plus',
-        component: 'task/create',
-        meta: {
-            title: '创建任务'
-        }
-    },
-    {
-        path: '/task/search',
-        title: '搜索任务',
-        icon: 'Search',
-        component: 'task/search',
-        meta: {
-            title: '搜索任务'
-        }
+        path: '/task',
+        title: '任务管理',
+        icon: 'Odometer',
+        children: [
+            {
+                path: '/task/create',
+                title: '创建任务',
+                component: 'task/create',
+                meta: {
+                    title: '创建任务'
+                }
+            },
+            {
+                path: '/task/search',
+                title: '搜索任务',
+                component: 'task/search',
+                meta: {
+                    title: '搜索任务'
+                }
+            }
+        ]
     },
     {
         path: '/issue',
@@ -187,8 +191,7 @@ export const menuList: MenuItem[] = [
 // 图标映射
 export const iconMap = {
     House,
-    Plus,
-    Search,
+    Odometer,
     Aim,
     Operation,
     Document,
