@@ -99,6 +99,7 @@
       :title="isEditing ? '编辑角色' : '添加角色'"
       width="40%"
       center
+      :style="{ maxHeight: '550px', overflowY: 'auto' }"
   >
     <el-form :model="roleForm" label-width="120px" :rules="formRules" ref="roleFormRef">
       <el-form-item label="角色名称" prop="name">
@@ -142,14 +143,15 @@
   <el-dialog
       v-model="assignPermissionsModalVisible"
       title="分配权限"
-      width="40%"
+      width="35%"
       center
+      :style="{ maxHeight: '550px', overflowY: 'auto' }"
   >
     <div v-if="selectedRole" class="assign-permissions-content">
       <h4>当前角色：{{ selectedRole.name }}</h4>
       <el-tree
           ref="assignPermissionTreeRef"
-          :data="permissionTreeData"
+          :data="assignPermissionTreeData"
           :props="defaultProps"
           show-checkbox
           node-key="id"
@@ -171,6 +173,7 @@
       width="40%"
       center
       class="role-detail-dialog"
+      :style="{ maxHeight: '550px', overflowY: 'auto' }"
   >
     <div v-if="selectedRole" class="role-detail-content">
       <div class="detail-item">
@@ -210,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoleStore } from '@/stores/role'
@@ -249,9 +252,9 @@ const total = computed(() => roleStore.pagination.total)
 const loading = computed(() => roleStore.loading)
 
 // 权限树数据
-const permissionTreeData = ref([])
-const rolePermissionsData = ref([])
-
+const permissionTreeData = ref([]); // 用于编辑角色
+const assignPermissionTreeData = ref([]); // 用于分配权限
+const rolePermissionsData = ref([]); // 用于角色详情查看
 // 多选相关
 const selectedRoles = ref([])
 
@@ -303,6 +306,7 @@ const fetchRoles = async () => {
 // 获取权限树
 const fetchPermissionTree = async () => {
   permissionTreeData.value = await permissionStore.getPermissionTreeAction()
+  assignPermissionTreeData.value = await permissionStore.getPermissionTreeAction()
 }
 
 // 处理分页变化
@@ -364,16 +368,13 @@ const editRole = async (role: Role) => {
     status: role.status
   })
 
-  // 获取角色权限并设置选中
-  try {
+  nextTick(async () => {
     const rolePermissions = await roleStore.getRolePermissionsAction(role.id)
     if (permissionTreeRef.value) {
-      permissionTreeRef.value.setCheckedKeys(rolePermissions.map(p => p.id))
+      await nextTick();
+      permissionTreeRef.value.setCheckedKeys(rolePermissions)
     }
-  } catch (error) {
-    ElMessage.error('获取角色权限失败')
-  }
-
+  })
   roleModalVisible.value = true
 }
 
@@ -384,9 +385,7 @@ const viewRole = async (role: Role) => {
 
     // 获取角色权限
     const rolePermissions = await roleStore.getRolePermissionsAction(role.id)
-    rolePermissionsData.value = await permissionStore.getPermissionTreeByIdsAction(
-        rolePermissions.map(p => p.id)
-    )
+    rolePermissionsData.value = await permissionStore.getPermissionTreeByIdsAction(rolePermissions)
 
     viewRoleModalVisible.value = true
   } catch (error) {
@@ -398,16 +397,12 @@ const viewRole = async (role: Role) => {
 const assignPermissions = async (role: Role) => {
   selectedRole.value = role
 
-  // 获取角色权限并设置选中
-  try {
+  nextTick(async () => {
     const rolePermissions = await roleStore.getRolePermissionsAction(role.id)
     if (assignPermissionTreeRef.value) {
-      assignPermissionTreeRef.value.setCheckedKeys(rolePermissions.map(p => p.id))
+      assignPermissionTreeRef.value.setCheckedKeys(rolePermissions)
     }
-  } catch (error) {
-    ElMessage.error('获取角色权限失败')
-  }
-
+  })
   assignPermissionsModalVisible.value = true
 }
 
@@ -536,7 +531,6 @@ const saveAssignedPermissions = async () => {
 
   const success = await roleStore.updateRolePermissionsAction(selectedRole.value.id, allPermissions)
   if (success) {
-
     assignPermissionsModalVisible.value = false
   }
 }

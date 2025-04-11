@@ -158,6 +158,7 @@ export const useRoleStore = defineStore('role', () => {
 
         const { success } = res.data
         if (success) {
+            ElMessage.success('更新成功')
             return true
         } else {
             ElMessage.error(res.data.message)

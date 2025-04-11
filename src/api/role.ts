@@ -117,7 +117,7 @@ export function getRolePermissions(roleId: number) {
  */
 export function updateRolePermissions(roleId: number, permissionIds: number[]) {
     return request({
-        url: '/api/role_permission/assign',
+        url: '/api/role/assign',
         method: 'post',
         params: { roleId },
         data: permissionIds
