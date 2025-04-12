@@ -20,35 +20,31 @@
             <div>
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="目标工作室" prop="workspace" required>
-                    <el-select v-model="taskForm.workspace" placeholder="请选择">
+                  <el-form-item label="目标工作室" prop="departmentId" required>
+                    <el-select v-model="taskForm.departmentId" placeholder="请选择">
                       <el-option label="技术" value="tech" />
                       <el-option label="设计" value="design" />
                       <el-option label="产品" value="product" />
                     </el-select>
                   </el-form-item>
                 </el-col>
-                <el-col :span="12">
-                  <el-form-item label="项目版本号" prop="version">
-                    <el-input v-model="taskForm.version" placeholder="请输入" class="white-bg-input" />
-                  </el-form-item>
-                </el-col>
               </el-row>
 
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="项目" prop="project" required>
-                    <el-select v-model="taskForm.project" placeholder="请选择">
+                  <el-form-item label="项目" prop="projectId" required>
+                    <el-select v-model="taskForm.projectId" placeholder="请选择">
                       <el-option label="项目A" value="projectA" />
                       <el-option label="项目B" value="projectB" />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="执行人" prop="executor" required>
-                    <el-select v-model="taskForm.executor" placeholder="请选择">
-                      <el-option label="张三" value="zhangsan" />
-                      <el-option label="李四" value="lisi" />
+                  <el-form-item label="优先级" prop="priority" required>
+                    <el-select v-model="taskForm.priority" placeholder="无">
+                      <el-option label="低" value="3" />
+                      <el-option label="中" value="2" />
+                      <el-option label="高" value="1" />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -56,20 +52,18 @@
 
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="重要程度" prop="priority">
-                    <el-select v-model="taskForm.priority" placeholder="无">
-                      <el-option label="低" value="low" />
-                      <el-option label="中" value="medium" />
-                      <el-option label="高" value="high" />
+                  <el-form-item label="执行人" prop="handler" required>
+                    <el-select v-model="taskForm.handler" placeholder="请选择">
+                      <el-option label="张三" value="zhangsan" />
+                      <el-option label="李四" value="lisi" />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="紧急程度" prop="urgency">
-                    <el-select v-model="taskForm.urgency" placeholder="无">
-                      <el-option label="低" value="low" />
-                      <el-option label="中" value="medium" />
-                      <el-option label="高" value="high" />
+                  <el-form-item label="验收人" prop="acceptor">
+                    <el-select v-model="taskForm.acceptor" placeholder="请选择">
+                      <el-option label="张三" value="zhangsan" />
+                      <el-option label="李四" value="lisi" />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -82,9 +76,9 @@
                 <el-input v-model="taskForm.title" placeholder="请输入" class="white-bg-input" />
               </el-form-item>
 
-              <el-form-item label="任务描述" prop="description">
+              <el-form-item label="任务内容" prop="content" required>
                 <div class="editor-container">
-                  <QuillEditor v-model:content="taskForm.description" contentType="html" theme="snow" />
+                  <QuillEditor v-model:content="taskForm.content" contentType="html" theme="snow" />
                 </div>
               </el-form-item>
             </div>
@@ -93,38 +87,30 @@
             <div class="form-section">
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="预计开始时间" prop="startTime">
+                  <el-form-item label="实际开始时间" prop="actualStartTime">
                     <el-date-picker
-                        v-model="taskForm.startTime"
+                        v-model="taskForm.actualStartTime"
                         type="date"
                         placeholder="请选择"
                     />
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="期望完成时间" prop="endTime" required>
+                  <el-form-item label="期望完成时间" prop="expectedTime" required>
                     <el-date-picker
-                        v-model="taskForm.endTime"
+                        v-model="taskForm.expectedTime"
                         type="date"
                         placeholder="请选择"
                     />
                   </el-form-item>
                 </el-col>
               </el-row>
-
-              <el-form-item label="可见范围" prop="visibility">
-                <el-radio-group v-model="taskForm.visibility">
-                  <el-radio label="all">所有人可见</el-radio>
-                  <el-radio label="workspace">工作室可见</el-radio>
-                  <el-radio label="self">自己可见</el-radio>
-                </el-radio-group>
-              </el-form-item>
             </div>
 
             <!-- 按钮组 -->
             <div class="button-container">
               <el-button @click="resetForm">重置</el-button>
-              <el-button @click="saveAsDraft">提交任务并评分</el-button>
+              <el-button @click="saveAndSplit">提交任务并拆分</el-button>
               <el-button type="primary" @click="submitForm">提交任务</el-button>
             </div>
           </el-form>
@@ -146,34 +132,35 @@ const taskFormRef = ref<FormInstance>()
 
 // 表单数据
 const taskForm = reactive({
-  workspace: '',
-  project: '',
-  version: '',
-  priority: '',
-  urgency: '',
-  executor: '',
+  departmentId: '',
+  projectId: '',
+  priority: '2',
+  handler: '',
+  acceptor: '',
   title: '',
-  description: '',
-  visibility: 'all',
-  startTime: '',
-  endTime: ''
+  content: '',
+  actualStartTime: '',
+  expectedTime: ''
 })
 
 // 表单验证规则
 const rules = reactive<FormRules>({
-  workspace: [
+  departmentId: [
     { required: true, message: '请选择目标工作室', trigger: 'change' }
   ],
-  project: [
+  projectId: [
     { required: true, message: '请选择项目', trigger: 'change' }
   ],
-  executor: [
+  handler: [
     { required: true, message: '请选择执行人', trigger: 'change' }
   ],
   title: [
     { required: true, message: '请输入任务标题', trigger: 'blur' }
   ],
-  endTime: [
+  content: [
+    { required: true, message: '请输入任务内容', trigger: 'blur' }
+  ],
+  expectedTime: [
     { required: true, message: '请选择期望完成时间', trigger: 'change' }
   ]
 })
@@ -186,11 +173,6 @@ const submitForm = async () => {
       ElMessage.success('任务创建成功')
     }
   })
-}
-
-// 保存为草稿
-const saveAsDraft = () => {
-  ElMessage.success('已保存为草稿')
 }
 
 // 重置表单
