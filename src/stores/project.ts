@@ -8,12 +8,14 @@ import {
     updateProjectStatus,
     getParentProjects,
     deleteProject,
-    batchDeleteProjects
+    batchDeleteProjects,
+    getProjectTree
 } from '@/api/project'
 import { ElMessage } from 'element-plus'
 
 export const useProjectStore = defineStore('project', () => {
     // 状态
+    const projectTree = ref<any[]>([])
     const projectList = ref<any[]>([])
     const pagination = ref({
         total: 0,
@@ -136,7 +138,26 @@ export const useProjectStore = defineStore('project', () => {
         }
     }
 
+    // 获取项目树
+    const getProjectTreeAction = async () => {
+        try {
+            const res = await getProjectTree()
+            const { success, data } = res.data
+            if (success) {
+                projectTree.value = data
+                return data
+            } else {
+                ElMessage.error(res.data.message)
+                return []
+            }
+        } catch (error) {
+            console.error('获取项目树失败:', error)
+            return []
+        }
+    }
+
     return {
+        projectTree,
         projectList,
         pagination,
         loading,
@@ -148,5 +169,6 @@ export const useProjectStore = defineStore('project', () => {
         deleteProjectAction,
         batchDeleteProjectsAction,
         getParentProjectsAction,
+        getProjectTreeAction
     }
 })

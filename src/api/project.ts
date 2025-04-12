@@ -72,4 +72,12 @@ export function getParentProjects() {
     })
 }
 
+// 获取项目树
+export function getProjectTree() {
+    return request({
+        url: '/api/project/tree',
+        method: 'get'
+    })
+}
+
 
