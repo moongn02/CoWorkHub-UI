@@ -21,11 +21,27 @@
               <el-row :gutter="20">
                 <el-col :span="12">
                   <el-form-item label="目标工作室" prop="departmentId" required>
-                    <el-select v-model="taskForm.departmentId" placeholder="请选择">
-                      <el-option label="技术" value="tech" />
-                      <el-option label="设计" value="design" />
-                      <el-option label="产品" value="product" />
-                    </el-select>
+                    <el-cascader
+                        v-model="taskForm.departmentId"
+                        :options="departmentTreeData"
+                        placeholder="请选择所属部门"
+                        clearable
+                        filterable
+                        :props="{
+                          checkStrictly: true,
+                          label: 'name',
+                          value: 'id',
+                          emitPath: false
+                        }"
+                        class="white-bg-input"
+                        @change="handleDepartmentChange"
+                    >
+                      <template #default="{ node, data }">
+                        <div>
+                          {{ data.name }}
+                        </div>
+                      </template>
+                    </el-cascader>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -33,10 +49,26 @@
               <el-row :gutter="20">
                 <el-col :span="12">
                   <el-form-item label="项目" prop="projectId" required>
-                    <el-select v-model="taskForm.projectId" placeholder="请选择">
-                      <el-option label="项目A" value="projectA" />
-                      <el-option label="项目B" value="projectB" />
-                    </el-select>
+                    <el-cascader
+                        v-model="taskForm.projectId"
+                        :options="projectTreeData"
+                        placeholder="请选择项目"
+                        clearable
+                        filterable
+                        :props="{
+                          checkStrictly: true,
+                          label: 'name',
+                          value: 'id',
+                          emitPath: false
+                        }"
+                        class="white-bg-input"
+                    >
+                      <template #default="{ node, data }">
+                        <div>
+                          {{ data.name }}
+                        </div>
+                      </template>
+                    </el-cascader>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
@@ -52,18 +84,36 @@
 
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="执行人" prop="handler" required>
-                    <el-select v-model="taskForm.handler" placeholder="请选择">
-                      <el-option label="张三" value="zhangsan" />
-                      <el-option label="李四" value="lisi" />
+                  <el-form-item label="执行人" prop="handlerId" required>
+                    <el-select
+                        v-model="taskForm.handlerId"
+                        placeholder="请选择"
+                        filterable
+                        :default-first-option="true"
+                    >
+                      <el-option
+                          v-for="user in users"
+                          :key="user.id"
+                          :label="user.realName"
+                          :value="user.id"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="验收人" prop="acceptor">
-                    <el-select v-model="taskForm.acceptor" placeholder="请选择">
-                      <el-option label="张三" value="zhangsan" />
-                      <el-option label="李四" value="lisi" />
+                  <el-form-item label="验收人" prop="acceptorId">
+                    <el-select
+                        v-model="taskForm.acceptorId"
+                        placeholder="请选择"
+                        filterable
+                        :default-first-option="true"
+                    >
+                      <el-option
+                          v-for="user in users"
+                          :key="user.id"
+                          :label="user.realName"
+                          :value="user.id"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -90,7 +140,9 @@
                   <el-form-item label="实际开始时间" prop="actualStartTime">
                     <el-date-picker
                         v-model="taskForm.actualStartTime"
-                        type="date"
+                        type="datetime"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        format="YYYY-MM-DD HH:mm:ss"
                         placeholder="请选择"
                     />
                   </el-form-item>
@@ -99,7 +151,9 @@
                   <el-form-item label="期望完成时间" prop="expectedTime" required>
                     <el-date-picker
                         v-model="taskForm.expectedTime"
-                        type="date"
+                        type="datetime"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        format="YYYY-MM-DD HH:mm:ss"
                         placeholder="请选择"
                     />
                   </el-form-item>
@@ -121,26 +175,79 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import Layout from '@/components/Layout.vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { ElMessage } from 'element-plus'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { useTaskStore } from '@/stores/task'
+import { useDeptStore } from '@/stores/department'
+import {useProjectStore} from "@/stores/project";
 
+const router = useRouter()
+const taskStore = useTaskStore()
+const deptStore = useDeptStore()
+const userStore = useUserStore()
+const projectStore = useProjectStore()
 const taskFormRef = ref<FormInstance>()
+
+// 获取当前用户
+const currentUser = userStore.userInfo
 
 // 表单数据
 const taskForm = reactive({
   departmentId: '',
   projectId: '',
   priority: '2',
-  handler: '',
-  acceptor: '',
+  handlerId: currentUser?.id || '',  // 默认执行人为当前用户
+  acceptorId: '',
   title: '',
   content: '',
   actualStartTime: '',
   expectedTime: ''
+})
+
+// 下拉选项数据
+const departmentTreeData = ref([])
+const projectTreeData = ref([])
+const users = ref([])
+
+// 获取部门树
+const fetchDepartmentTree = async () => {
+  departmentTreeData.value = await deptStore.getDepartmentTreeAction()
+}
+
+// 获取项目树
+const fetchProjectTree = async () => {
+  projectTreeData.value = await projectStore.getProjectTreeAction()
+}
+
+// 获取用户列表
+const fetchUsers = async () => {
+  users.value = await userStore.getUsersAction()
+}
+
+// 处理部门选择变化
+const handleDepartmentChange = async (departmentId) => {
+  if (!departmentId) return
+
+  // 获取部门详情，找到部门负责人
+  const departmentDetail = await deptStore.getDepartmentDetailAction(departmentId)
+  if (departmentDetail && departmentDetail.leaderId) {
+    // 设置验收人为部门负责人
+    taskForm.acceptorId = departmentDetail.leaderId
+  }
+}
+
+// 组件挂载时加载选项数据
+onMounted(async () => {
+  await Promise.all([
+    fetchDepartmentTree(),
+    fetchProjectTree(),
+    fetchUsers()
+  ])
 })
 
 // 表单验证规则
@@ -151,7 +258,7 @@ const rules = reactive<FormRules>({
   projectId: [
     { required: true, message: '请选择项目', trigger: 'change' }
   ],
-  handler: [
+  handlerId: [
     { required: true, message: '请选择执行人', trigger: 'change' }
   ],
   title: [
@@ -168,9 +275,51 @@ const rules = reactive<FormRules>({
 // 提交表单
 const submitForm = async () => {
   if (!taskFormRef.value) return
-  await taskFormRef.value.validate((valid) => {
+  await taskFormRef.value.validate(async (valid) => {
     if (valid) {
-      ElMessage.success('任务创建成功')
+      // 转换数据格式
+      const taskData = {
+        ...taskForm,
+        // 确保数字类型字段是数字而不是字符串
+        priority: parseInt(taskForm.priority),
+        handlerId: taskForm.handlerId ? parseInt(taskForm.handlerId) : null,
+        acceptorId: taskForm.acceptorId ? parseInt(taskForm.acceptorId) : null,
+        departmentId: parseInt(taskForm.departmentId),
+        projectId: parseInt(taskForm.projectId),
+      }
+
+      const result = await taskStore.createTaskAction(taskData)
+      if (result) {
+        // 创建成功，跳转到任务详情页
+        await router.push(`/task/detail/${result.id}`)
+      }
+    }
+  })
+}
+
+// 保存并拆分任务
+const saveAndSplit = async () => {
+  if (!taskFormRef.value) return
+  await taskFormRef.value.validate(async (valid) => {
+    if (valid) {
+      // 先保存主任务
+      const taskData = {
+        ...taskForm,
+        priority: parseInt(taskForm.priority),
+        handlerId: taskForm.handlerId ? parseInt(taskForm.handlerId) : null,
+        acceptorId: taskForm.acceptorId ? parseInt(taskForm.acceptorId) : null,
+        departmentId: parseInt(taskForm.departmentId),
+        projectId: parseInt(taskForm.projectId),
+      }
+
+      const result = await taskStore.createTaskAction(taskData)
+      if (result) {
+        // 创建成功，跳转到任务拆分页面
+        router.push({
+          path: '/task/split',
+          query: { parentId: result.id }
+        })
+      }
     }
   })
 }
@@ -179,6 +328,8 @@ const submitForm = async () => {
 const resetForm = () => {
   if (!taskFormRef.value) return
   taskFormRef.value.resetFields()
+  // 重置执行人为当前用户
+  taskForm.handlerId = currentUser?.id || ''
 }
 </script>
 
