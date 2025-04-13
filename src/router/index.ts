@@ -33,6 +33,15 @@ const baseRoutes: RouteRecordRaw[] = [
     name: 'HomePage',
     component: () => import('@/views/home/index.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/task/:id',
+    name: 'TaskDetail',
+    component: () => import('@/views/task/index.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '任务详情'
+    }
   }
 ]
 

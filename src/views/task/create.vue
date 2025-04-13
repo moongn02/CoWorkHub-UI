@@ -291,7 +291,7 @@ const submitForm = async () => {
       const result = await taskStore.createTaskAction(taskData)
       if (result) {
         // 创建成功，跳转到任务详情页
-        await router.push(`/task/detail/${result.id}`)
+        await router.push(`/task/${result.id}`)
       }
     }
   })

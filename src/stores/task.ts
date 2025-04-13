@@ -27,7 +27,6 @@ export const useTaskStore = defineStore('task', () => {
             }
         } catch (error) {
             loading.value = false
-            console.error('创建任务失败:', error)
             ElMessage.error('创建任务失败')
             return null
         }
@@ -35,23 +34,14 @@ export const useTaskStore = defineStore('task', () => {
 
     // 获取任务详情
     const getTaskDetailAction = async (id: number) => {
-        loading.value = true
-        try {
-            const res = await getTaskDetail(id)
-            const { success, data } = res.data
-            loading.value = false
+        const res = await getTaskDetail(id)
+        const { success, data } = res.data
 
-            if (success) {
-                currentTask.value = data
-                return data
-            } else {
-                ElMessage.error(res.data.message || '获取任务详情失败')
-                return null
-            }
-        } catch (error) {
-            loading.value = false
-            console.error('获取任务详情失败:', error)
-            ElMessage.error('获取任务详情失败')
+        if (success) {
+            currentTask.value = data
+            return data
+        } else {
+            ElMessage.error(res.data.message || '获取任务详情失败')
             return null
         }
     }

@@ -12,15 +12,15 @@
             <div class="status-section">
               <div class="status-priority-line">
                 <div class="status-item">
-                  <el-tag :type="getStatusType(task.status)">{{ getStatusText(task.status) }}</el-tag>
+                  <el-tag :type="getStatusType(task.status)">{{ task.statusText }}</el-tag>
                 </div>
                 <div class="divider">/</div>
                 <div class="status-item">
-                  <el-tag :type="getPriorityType(task.priority)">{{ getPriorityText(task.priority) }}</el-tag>
+                  <el-tag :type="getPriorityType(task.priority)">{{ task.priorityText }}</el-tag>
                 </div>
               </div>
               <div class="status-item">
-                <span>{{ formatDateTime(task.expected_time) }}</span>
+                <span>{{ formatDateTime(task.expectedTime) }}</span>
               </div>
             </div>
           </div>
@@ -44,39 +44,39 @@
             <div class="meta-grid">
               <div class="meta-item">
                 <span class="meta-label">所属项目</span>
-                <span class="meta-value">{{ task.project_name }}</span>
+                <span class="meta-value">{{ task.projectName }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">所属部门</span>
-                <span class="meta-value">{{ task.department_name }}</span>
+                <span class="meta-value">{{ task.departmentName }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">创建人</span>
-                <span class="meta-value">{{ task.creator_name }}</span>
+                <span class="meta-value">{{ task.creatorName }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">执行人</span>
-                <span class="meta-value">{{ task.handler_name }}</span>
+                <span class="meta-value">{{ task.handlerName }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">验收人</span>
-                <span class="meta-value">{{ task.acceptor_name }}</span>
+                <span class="meta-value">{{ task.acceptorName }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">实际开始时间</span>
-                <span class="meta-value">{{ formatDateTime(task.actual_start_time) }}</span>
+                <span class="meta-value">{{ formatDateTime(task.actualStartTime) }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">状态</span>
-                <span class="meta-value">{{ getStatusText(task.status) }}</span>
+                <span class="meta-value">{{ task.statusText }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">优先级</span>
-                <span class="meta-value">{{ getPriorityText(task.priority) }}</span>
+                <span class="meta-value">{{ task.priorityText }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">期望完成时间</span>
-                <span class="meta-value">{{ formatDateTime(task.expected_time) }}</span>
+                <span class="meta-value">{{ formatDateTime(task.expectedTime) }}</span>
               </div>
             </div>
           </el-card>
@@ -87,10 +87,10 @@
           <el-card class="task-details-card action-card" shadow="hover">
             <div class="action-bar">
               <el-button type="primary" @click="handleModify">修改任务</el-button>
-              <el-button type="success" @click="handleChangeStatus">更改状态</el-button>
+              <el-button type="success" @click="handleChangeStatus">变更状态</el-button>
               <el-button type="warning" @click="handleSplitTask">拆分任务</el-button>
               <el-button type="info" @click="handleCreateIssue">创建问题</el-button>
-              <el-button type="primary" @click="handleTransferTask">转交任务</el-button>
+              <el-button type="primary" @click="handleTransferTask">转派任务</el-button>
               <el-button type="danger" @click="handleModifyExpectedTime">修改期望时间</el-button>
               <el-button type="success" @click="handleAddRemarks">备注</el-button>
             </div>
@@ -144,7 +144,7 @@
           <!-- Module 5: Parent task, child tasks, and related issues -->
           <el-card class="task-details-card tabs-card" shadow="hover">
             <el-tabs>
-              <el-tab-pane label="父任务" v-if="task.parent_task_id">
+              <el-tab-pane label="父任务" v-if="task.parentTaskId">
                 <div class="tab-content-container">
                   <div class="subtasks-section">
                     <div class="scrollable-content subtasks-content">
@@ -153,14 +153,14 @@
                           <div class="related-item-header">
                             <el-tag size="small" type="primary">{{ parentTask.id }}</el-tag>
                             <el-tag size="small" :type="getStatusType(parentTask.status)">
-                              {{ getStatusText(parentTask.status) }}
+                              {{ parentTask.statusText }}
                             </el-tag>
                           </div>
                           <div class="related-item-content">
                             <h4>{{ parentTask.title }}</h4>
                             <p class="related-item-info">
-                              <span>执行人: {{ parentTask.handler_name }}</span>
-                              <span>期望完成: {{ formatDateTime(parentTask.expected_time) }}</span>
+                              <span>执行人: {{ parentTask.handlerName }}</span>
+                              <span>期望完成: {{ formatDateTime(parentTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -179,14 +179,14 @@
                           <div class="related-item-header">
                             <el-tag size="small" type="primary">{{ subTask.id }}</el-tag>
                             <el-tag size="small" :type="getStatusType(subTask.status)">
-                              {{ getStatusText(subTask.status) }}
+                              {{ subTask.statusText }}
                             </el-tag>
                           </div>
                           <div class="related-item-content">
                             <h4>{{ subTask.title }}</h4>
                             <p class="related-item-info">
-                              <span>执行人: {{ subTask.handler_name }}</span>
-                              <span>期望完成: {{ formatDateTime(subTask.expected_time) }}</span>
+                              <span>执行人: {{ subTask.handlerName }}</span>
+                              <span>期望完成: {{ formatDateTime(subTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -204,15 +204,15 @@
                         <div v-for="issue in relatedIssues" :key="issue.id" class="related-item">
                           <div class="related-item-header">
                             <el-tag size="small" type="warning">{{ issue.id }}</el-tag>
-                            <el-tag size="small" :type="getIssueStatusType(issue.status)">
-                              {{ getIssueStatusText(issue.status) }}
+                            <el-tag size="small" :type="getStatusType(issue.status)">
+                              {{ issue.statusText }}
                             </el-tag>
                           </div>
                           <div class="related-item-content">
                             <h4>{{ issue.title }}</h4>
                             <p class="related-item-info">
-                              <span>处理人: {{ issue.handler_name }}</span>
-                              <span>优先级: {{ getPriorityText(issue.priority) }}</span>
+                              <span>处理人: {{ issue.handlerName }}</span>
+                              <span>优先级: {{ issue.priorityText }}</span>
                             </p>
                           </div>
                         </div>
@@ -237,7 +237,7 @@
             <el-input v-model="modifyForm.content" type="textarea" :rows="6" placeholder="请输入任务内容" />
           </el-form-item>
           <el-form-item label="所属项目">
-            <el-select v-model="modifyForm.project_id" placeholder="请选择项目" style="width: 100%">
+            <el-select v-model="modifyForm.projectId" placeholder="请选择项目" style="width: 100%">
               <el-option
                   v-for="project in projectOptions"
                   :key="project.id"
@@ -247,7 +247,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="所属部门">
-            <el-select v-model="modifyForm.department_id" placeholder="请选择部门" style="width: 100%">
+            <el-select v-model="modifyForm.departmentId" placeholder="请选择部门" style="width: 100%">
               <el-option
                   v-for="department in departmentOptions"
                   :key="department.id"
@@ -257,7 +257,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="验收人">
-            <el-select v-model="modifyForm.acceptor_id" placeholder="请选择验收人" style="width: 100%">
+            <el-select v-model="modifyForm.acceptorId" placeholder="请选择验收人" style="width: 100%">
               <el-option
                   v-for="user in userOptions"
                   :key="user.id"
@@ -333,7 +333,7 @@
       <el-dialog v-model="transferDialogVisible" title="转交任务" width="30%">
         <el-form :model="transferForm">
           <el-form-item label="转交给">
-            <el-select v-model="transferForm.handler_id" placeholder="请选择执行人">
+            <el-select v-model="transferForm.handlerId" placeholder="请选择执行人">
               <el-option
                   v-for="user in userOptions"
                   :key="user.id"
@@ -396,151 +396,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import { ElMessage } from 'element-plus'
+import { useTaskStore } from '@/stores/task'
+import { useDeptStore } from '@/stores/department'
+import { useUserStore } from '@/stores/user'
 
-// 模拟任务数据
-const task = ref({
-  id: 'TASK-1001',
-  title: '实现用户认证模块',
-  content: `<p>需要实现基于JWT的用户认证系统，包括以下功能：</p>
-  <ul>
-    <li>用户登录</li>
-    <li>令牌刷新</li>
-    <li>权限验证</li>
-    <li>密码重置</li>
-  </ul>
-  <p>技术栈：Vue 3 + TypeScript + Element Plus</p>`,
-  creator_id: 101,
-  creator_name: '张三',
-  handler_id: 102,
-  handler_name: '李四',
-  acceptor_id: 103,
-  acceptor_name: '王五',
-  project_id: 1,
-  project_name: '企业协作平台',
-  department_id: 2,
-  department_name: '研发部',
-  parent_task_id: 'TASK-1000',
-  status: 2,
-  priority: 1,
-  actual_start_time: '2024-06-10 09:00:00',
-  expected_time: '2024-06-20 18:00:00',
-  create_time: '2024-06-08 14:30:00',
-  update_time: '2024-06-12 10:15:00'
+// 获取路由参数
+const route = useRoute()
+const taskId = route.params.id
+
+// 初始化stores
+const taskStore = useTaskStore()
+
+// 任务数据
+const task = ref({})
+const loading = ref(true)
+
+// 模拟数据（临时使用）
+const taskRemarks = ref([])
+const taskActivities = ref([])
+const subTasks = ref([])
+const relatedIssues = ref([])
+const parentTask = ref(null)
+
+// 下拉选项
+const userOptions = ref([])
+const projectOptions = ref([])
+const departmentOptions = ref([])
+
+// 获取相关数据（子任务、问题等）
+const fetchRelatedData = async () => {
+  // 如果有子任务、相关问题等，可以在这里加载
+  // 示例：await fetchSubTasks()
+}
+
+// 组件挂载时获取数据
+onMounted(() => {
+  fetchTaskDetail()
 })
-
-const parentTask = ref({
-  id: 'TASK-1000',
-  title: '父任务标题',
-  status: 2,
-  handler_name: '张三',
-  expected_time: '2024-06-10 09:00:00'
-})
-
-// 模拟子任务数据
-const subTasks = ref([
-  {
-    id: 'TASK-1002',
-    title: '实现登录接口',
-    handler_name: '李四',
-    status: 3,
-    expected_time: '2024-06-15 18:00:00'
-  },
-  {
-    id: 'TASK-1003',
-    title: '实现令牌刷新功能',
-    handler_name: '李四',
-    status: 2,
-    expected_time: '2024-06-18 18:00:00'
-  },
-  {
-    id: 'TASK-1004',
-    title: '实现权限验证功能',
-    handler_name: '王五',
-    status: 1,
-    expected_time: '2024-06-19 18:00:00'
-  }
-])
-
-// 模拟关联问题数据
-const relatedIssues = ref([
-  {
-    id: 'ISSUE-501',
-    title: '登录页面样式异常',
-    handler_name: '赵六',
-    status: 1,
-    priority: 2
-  },
-  {
-    id: 'ISSUE-502',
-    title: '令牌刷新失败',
-    handler_name: '李四',
-    status: 2,
-    priority: 1
-  }
-])
-
-// 模拟任务活动数据
-const taskActivities = ref([
-  {
-    time: '2024-06-12 10:15:00',
-    content: '李四更新了任务进度',
-    type: 'primary'
-  },
-  {
-    time: '2024-06-11 16:30:00',
-    content: '李四开始处理任务',
-    type: 'success'
-  },
-  {
-    time: '2024-06-10 09:00:00',
-    content: '任务已分派给李四',
-    type: 'info'
-  },
-  {
-    time: '2024-06-08 14:30:00',
-    content: '张三创建了任务',
-    type: 'info'
-  }
-])
-
-// 模拟备注数据
-const taskRemarks = ref([
-  {
-    user: '张三',
-    time: '2024-06-08 15:30:00',
-    content: '请尽快完成此任务，这是本月的重点工作。'
-  },
-  {
-    user: '李四',
-    time: '2024-06-10 10:00:00',
-    content: '已开始处理，预计按时完成。'
-  }
-])
-
-// 模拟选项数据
-const projectOptions = ref([
-  { id: 1, name: '企业协作平台' },
-  { id: 2, name: '客户管理系统' },
-  { id: 3, name: '数据分析平台' }
-])
-
-const departmentOptions = ref([
-  { id: 1, name: '产品部' },
-  { id: 2, name: '研发部' },
-  { id: 3, name: '测试部' },
-  { id: 4, name: '运维部' }
-])
-
-const userOptions = ref([
-  { id: 101, name: '张三' },
-  { id: 102, name: '李四' },
-  { id: 103, name: '王五' },
-  { id: 104, name: '赵六' },
-  { id: 105, name: '钱七' }
-])
 
 // 对话框状态
 const modifyDialogVisible = ref(false)
@@ -555,9 +451,9 @@ const remarksDialogVisible = ref(false)
 const modifyForm = ref({
   title: '',
   content: '',
-  project_id: null,
-  department_id: null,
-  acceptor_id: null,
+  projectId: null,
+  departmentId: null,
+  acceptorId: null,
   priority: null
 })
 
@@ -584,14 +480,21 @@ const commentForm = ref({
   content: ''
 })
 
-// 格式化日期时间
-const formatDateTime = (dateTimeStr: string) => {
-  if (!dateTimeStr) return '-'
-  return dateTimeStr
+// 根据ID获取任务详情
+const fetchTaskDetail = async () => {
+  loading.value = true
+  const taskData = await taskStore.getTaskDetailAction(taskId)
+  if (taskData) {
+    task.value = taskData
+
+    await fetchRelatedData()
+  }
+
+  loading.value = false
 }
 
-// 获取状态文本
-const getStatusText = (status: number) => {
+// 状态、优先级等帮助函数
+const getStatusText = (status) => {
   const statusMap = {
     1: '已分派',
     2: '处理中',
@@ -603,6 +506,26 @@ const getStatusText = (status: number) => {
   return statusMap[status] || '未知'
 }
 
+// 格式化日期时间
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return '-'
+
+  // 尝试格式化日期
+  try {
+    const date = new Date(dateTimeStr)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch (e) {
+    return dateTimeStr
+  }
+}
+
 // 获取状态类型
 const getStatusType = (status: number) => {
   const typeMap = {
@@ -611,19 +534,8 @@ const getStatusType = (status: number) => {
     3: 'success',
     4: 'warning',
     5: 'danger',
-    6: 'info'
   }
   return typeMap[status] || 'info'
-}
-
-// 获取优先级文本
-const getPriorityText = (priority: number) => {
-  const priorityMap = {
-    1: '高优先级',
-    2: '中优先级',
-    3: '低优先级'
-  }
-  return priorityMap[priority] || '未知'
 }
 
 // 获取优先级类型
@@ -636,194 +548,7 @@ const getPriorityType = (priority: number) => {
   return typeMap[priority] || 'info'
 }
 
-// 获取问题状态文本
-const getIssueStatusText = (status: number) => {
-  const statusMap = {
-    1: '待处理',
-    2: '处理中',
-    3: '已解决',
-    4: '已关闭'
-  }
-  return statusMap[status] || '未知'
-}
 
-// 获取问题状态类型
-const getIssueStatusType = (status: number) => {
-  const typeMap = {
-    1: 'info',
-    2: 'primary',
-    3: 'success',
-    4: 'info'
-  }
-  return typeMap[status] || 'info'
-}
-
-// 处理修改任务
-const handleModify = () => {
-  modifyForm.value = {
-    title: task.value.title,
-    content: task.value.content,
-    project_id: task.value.project_id,
-    department_id: task.value.department_id,
-    acceptor_id: task.value.acceptor_id,
-    priority: task.value.priority
-  }
-  modifyDialogVisible.value = true
-}
-
-// 确认修改任务
-const confirmModify = () => {
-  task.value.title = modifyForm.value.title
-  task.value.content = modifyForm.value.content
-  task.value.project_id = modifyForm.value.project_id
-  task.value.project_name = projectOptions.value.find(p => p.id === modifyForm.value.project_id)?.name || ''
-  task.value.department_id = modifyForm.value.department_id
-  task.value.department_name = departmentOptions.value.find(d => d.id === modifyForm.value.department_id)?.name || ''
-  task.value.acceptor_id = modifyForm.value.acceptor_id
-  task.value.acceptor_name = userOptions.value.find(u => u.id === modifyForm.value.acceptor_id)?.name || ''
-  task.value.priority = modifyForm.value.priority
-
-  ElMessage.success('任务修改成功')
-  modifyDialogVisible.value = false
-
-  // 添加活动记录
-  taskActivities.value.unshift({
-    time: new Date().toLocaleString(),
-    content: '修改了任务信息',
-    type: 'primary'
-  })
-}
-
-// 处理更改状态
-const handleChangeStatus = () => {
-  statusForm.value.status = task.value.status
-  statusForm.value.remark = ''
-  statusDialogVisible.value = true
-}
-
-// 确认更改状态
-const confirmChangeStatus = () => {
-  task.value.status = statusForm.value.status
-  ElMessage.success('任务状态更新成功')
-  statusDialogVisible.value = false
-
-  // 添加活动记录
-  taskActivities.value.unshift({
-    time: new Date().toLocaleString(),
-    content: `将任务状态更改为"${getStatusText(statusForm.value.status)}"`,
-    type: 'primary'
-  })
-}
-
-// 处理拆分任务
-const handleSplitTask = () => {
-  splitDialogVisible.value = true
-}
-
-// 确认拆分任务
-const confirmSplitTask = () => {
-  ElMessage.success('任务拆分成功')
-  splitDialogVisible.value = false
-
-  // 添加活动记录
-  taskActivities.value.unshift({
-    time: new Date().toLocaleString(),
-    content: '拆分了任务',
-    type: 'warning'
-  })
-}
-
-// 处理创建关联问题
-const handleCreateIssue = () => {
-  issueDialogVisible.value = true
-}
-
-// 确认创建关联问题
-const confirmCreateIssue = () => {
-  ElMessage.success('关联问题创建成功')
-  issueDialogVisible.value = false
-
-  // 添加活动记录
-  taskActivities.value.unshift({
-    time: new Date().toLocaleString(),
-    content: '创建了关联问题',
-    type: 'info'
-  })
-}
-
-// 处理转交任务
-const handleTransferTask = () => {
-  transferForm.value.handler_id = null
-  transferForm.value.reason = ''
-  transferDialogVisible.value = true
-}
-
-// 确认转交任务
-const confirmTransferTask = () => {
-  const newHandler = userOptions.value.find(u => u.id === transferForm.value.handler_id)
-  if (newHandler) {
-    task.value.handler_id = newHandler.id
-    task.value.handler_name = newHandler.name
-
-    ElMessage.success(`任务已成功转交给${newHandler.name}`)
-    transferDialogVisible.value = false
-
-    // 添加活动记录
-    taskActivities.value.unshift({
-      time: new Date().toLocaleString(),
-      content: `将任务转交给${newHandler.name}`,
-      type: 'warning'
-    })
-  }
-}
-
-// 处理修改期望完成时间
-const handleModifyExpectedTime = () => {
-  expectedTimeForm.value.expected_time = task.value.expected_time
-  expectedTimeForm.value.reason = ''
-  expectedTimeDialogVisible.value = true
-}
-
-// 确认修改期望完成时间
-const confirmModifyExpectedTime = () => {
-  task.value.expected_time = expectedTimeForm.value.expected_time
-  ElMessage.success('期望完成时间修改成功')
-  expectedTimeDialogVisible.value = false
-
-  // 添加活动记录
-  taskActivities.value.unshift({
-    time: new Date().toLocaleString(),
-    content: `修改了期望完成时间为${formatDateTime(expectedTimeForm.value.expected_time)}`,
-    type: 'danger'
-  })
-}
-
-// 处理添加备注
-const handleAddRemarks = () => {
-  remarksForm.value.content = ''
-  remarksDialogVisible.value = true
-}
-
-// 确认添加备注
-const confirmAddRemarks = () => {
-  if (remarksForm.value.content.trim()) {
-    taskRemarks.value.unshift({
-      user: '当前用户',
-      time: new Date().toLocaleString(),
-      content: remarksForm.value.content
-    })
-
-    ElMessage.success('备注添加成功')
-    remarksDialogVisible.value = false
-
-    // 添加活动记录
-    taskActivities.value.unshift({
-      time: new Date().toLocaleString(),
-      content: '添加了备注',
-      type: 'info'
-    })
-  }
-}
 </script>
 
 <style scoped>
