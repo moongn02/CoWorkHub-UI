@@ -17,3 +17,14 @@ export function getTaskDetail(id: number) {
         method: 'get'
     })
 }
+
+// 获取任务列表（分页）
+export function getPagingTaskList(query: any = {}) {
+    return request({
+        url: '/api/task/page_list',
+        method: 'get',
+        params: {
+            ...query
+        }
+    })
+}

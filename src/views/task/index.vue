@@ -493,19 +493,6 @@ const fetchTaskDetail = async () => {
   loading.value = false
 }
 
-// 状态、优先级等帮助函数
-const getStatusText = (status) => {
-  const statusMap = {
-    1: '已分派',
-    2: '处理中',
-    3: '已完成',
-    4: '测试中',
-    5: '已暂停',
-    6: '已关闭'
-  }
-  return statusMap[status] || '未知'
-}
-
 // 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
   if (!dateTimeStr) return '-'
