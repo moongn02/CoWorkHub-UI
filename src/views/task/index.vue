@@ -106,13 +106,13 @@
                 <div class="tab-content-container">
                   <div class="remarks-section">
                     <div class="scrollable-content remarks-content">
-                      <div v-if="taskRemarks.length > 0">
-                        <div v-for="(remark, index) in taskRemarks" :key="index" class="remark-item">
+                      <div v-if="taskMemos.length > 0">
+                        <div v-for="(memo, index) in taskMemos" :key="index" class="remark-item">
                           <div class="remark-header">
-                            <span class="remark-user">{{ remark.user }}</span>
-                            <span class="remark-time">{{ remark.time }}</span>
+                            <span class="remark-user">{{ memo.user }}</span>
+                            <span class="remark-time">{{ memo.time }}</span>
                           </div>
-                          <div class="remark-content">{{ remark.content }}</div>
+                          <div class="remark-content">{{ memo.content }}</div>
                         </div>
                       </div>
                       <el-empty v-else description="暂无备注" :image-size="60" />
@@ -144,7 +144,7 @@
           <!-- Module 5: Parent task, child tasks, and related issues -->
           <el-card class="task-details-card tabs-card" shadow="hover">
             <el-tabs>
-              <el-tab-pane label="父任务" v-if="task.parentTaskId">
+              <el-tab-pane label="父任务">
                 <div class="tab-content-container">
                   <div class="subtasks-section">
                     <div class="scrollable-content subtasks-content">
@@ -416,7 +416,7 @@ const task = ref({})
 const loading = ref(true)
 
 // 模拟数据（临时使用）
-const taskRemarks = ref([])
+const taskMemos = ref([])
 const taskActivities = ref([])
 const subTasks = ref([])
 const relatedIssues = ref([])
