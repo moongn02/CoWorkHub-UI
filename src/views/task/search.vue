@@ -114,7 +114,7 @@
             <!-- 时间范围搜索 -->
             <el-form-item label="期望完成时间">
               <el-date-picker
-                  v-model="timeRange.expectedTime"
+                  v-model="dateRange"
                   type="daterange"
                   range-separator="至"
                   start-placeholder="开始日期"
@@ -134,9 +134,10 @@
         <!-- 任务列表 -->
         <el-card class="table-card">
           <el-table :data="taskList" v-loading="loading" border style="width: 100%">
-            <el-table-column prop="id" label="任务编号" width="100" />
-            <el-table-column prop="departmentName" label="部门" width="120" />
-            <el-table-column prop="projectName" label="项目" width="120" />
+            <el-table-column prop="id" label="任务编号" width="90" />
+            <el-table-column prop="title" label="任务标题" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="projectName" label="项目" width="140" />
+            <el-table-column prop="departmentName" label="部门" width="100" />
             <el-table-column prop="handlerName" label="执行人" width="100" />
             <el-table-column label="任务状态" width="100">
               <template #default="scope">
@@ -152,12 +153,11 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="期望完成时间" width="160">
+            <el-table-column label="期望完成时间" width="150">
               <template #default="scope">
                 {{ formatDateTime(scope.row.expectedTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="title" label="任务标题" min-width="200" show-overflow-tooltip />
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="scope">
                 <el-button type="primary" size="small" @click="viewTaskDetail(scope.row.id)">查看</el-button>
@@ -228,11 +228,8 @@ const searchForm = reactive({
   pageSize: 10
 })
 
-// 时间范围
-const timeRange = reactive({
-  actualStartTime: [],
-  expectedTime: []
-})
+// 日期范围
+const dateRange = ref([])
 
 // 获取选项数据
 const fetchOptions = async () => {
@@ -270,6 +267,12 @@ const fetchTasks = async () => {
     pageSize: searchForm.pageSize
   }
 
+  if (dateRange.value && dateRange.value.length === 2) {
+    // 确保开始日期是当天开始时间，结束日期是当天结束时间
+    query.startDate = dateRange.value[0]
+    query.endDate = dateRange.value[1]
+  }
+
   await taskStore.getPagingTaskListAction(query)
 }
 
@@ -288,8 +291,7 @@ const resetForm = () => {
   })
 
   // 重置时间范围
-  timeRange.actualStartTime = []
-  timeRange.expectedTime = []
+  dateRange.value = []
 
   // 重置页码
   searchForm.pageNum = 1
@@ -370,12 +372,14 @@ onMounted(() => {
   gap: 20px;
 }
 
-.search-card {
+.search-card, .table-card {
   border-radius: 8px;
+  transition: all 0.3s ease;
 }
 
-.table-card {
-  border-radius: 8px;
+.search-card:hover, .table-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .pagination-container {

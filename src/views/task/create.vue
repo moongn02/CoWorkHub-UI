@@ -20,7 +20,7 @@
             <div>
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="目标工作室" prop="departmentId" required>
+                  <el-form-item label="目标部门" prop="departmentId" required>
                     <el-cascader
                         v-model="taskForm.departmentId"
                         :options="departmentTreeData"
