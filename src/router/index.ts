@@ -42,7 +42,16 @@ const baseRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: '任务详情'
     }
-  }
+  },
+  {
+    path: '/issue/:id',
+    name: 'IssueDetail',
+    component: () => import('@/views/issue/index.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '问题详情'
+    }
+  },
 ]
 
 // 将菜单配置转换为路由配置

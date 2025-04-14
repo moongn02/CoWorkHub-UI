@@ -40,36 +40,85 @@
               <el-row :gutter="20">
                 <el-col :span="12">
                   <el-form-item label="项目" prop="projectId" required>
-                    <el-select v-model="issueForm.projectId" placeholder="请选择">
-                      <el-option label="项目A" value="projectA" />
-                      <el-option label="项目B" value="projectB" />
-                    </el-select>
+                    <el-cascader
+                        v-model="issueForm.projectId"
+                        :options="projectTreeData"
+                        placeholder="请选择项目"
+                        clearable
+                        filterable
+                        :props="{
+                          checkStrictly: true,
+                          label: 'name',
+                          value: 'id',
+                          emitPath: false
+                        }"
+                        class="white-bg-input"
+                    >
+                      <template #default="{ node, data }">
+                        <div>
+                          {{ data.name }}
+                        </div>
+                      </template>
+                    </el-cascader>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="部门" prop="departmentId" required>
-                    <el-select v-model="issueForm.departmentId" placeholder="请选择">
-                      <el-option label="技术" value="tech" />
-                      <el-option label="设计" value="design" />
-                      <el-option label="产品" value="product" />
-                    </el-select>
+                  <el-form-item label="目标部门" prop="departmentId" required>
+                    <el-cascader
+                        v-model="issueForm.departmentId"
+                        :options="departmentTreeData"
+                        placeholder="请选择所属部门"
+                        clearable
+                        filterable
+                        :props="{
+                          checkStrictly: true,
+                          label: 'name',
+                          value: 'id',
+                          emitPath: false
+                        }"
+                        class="white-bg-input"
+                    >
+                      <template #default="{ node, data }">
+                        <div>
+                          {{ data.name }}
+                        </div>
+                      </template>
+                    </el-cascader>
                   </el-form-item>
                 </el-col>
               </el-row>
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="测试人" prop="tester" required>
-                    <el-select v-model="issueForm.tester" placeholder="请选择">
-                      <el-option label="张三" value="zhangsan" />
-                      <el-option label="李四" value="lisi" />
+                  <el-form-item label="测试人" prop="testerId" required>
+                    <el-select
+                        v-model="issueForm.testerId"
+                        placeholder="请选择"
+                        filterable
+                        :default-first-option="true"
+                    >
+                      <el-option
+                          v-for="user in users"
+                          :key="user.id"
+                          :label="user.realName"
+                          :value="user.id"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="处理人" prop="handler" required>
-                    <el-select v-model="issueForm.handler" placeholder="请选择">
-                      <el-option label="张三" value="zhangsan" />
-                      <el-option label="李四" value="lisi" />
+                  <el-form-item label="处理人" prop="handlerId" required>
+                    <el-select
+                        v-model="issueForm.handlerId"
+                        placeholder="请选择"
+                        filterable
+                        :default-first-option="true"
+                    >
+                      <el-option
+                          v-for="user in users"
+                          :key="user.id"
+                          :label="user.realName"
+                          :value="user.id"
+                      />
                     </el-select>
                   </el-form-item>
                 </el-col>
@@ -132,14 +181,14 @@
             <!-- 环境信息 -->
             <div class="form-section">
               <el-form-item label="浏览器" prop="browser">
-                <el-checkbox-group v-model="issueForm.browser">
-                  <el-checkbox label="1">IE</el-checkbox>
-                  <el-checkbox label="2">Microsoft Edge</el-checkbox>
-                  <el-checkbox label="3">Chrome</el-checkbox>
-                  <el-checkbox label="4">Firefox</el-checkbox>
-                  <el-checkbox label="5">Safari</el-checkbox>
-                  <el-checkbox label="6">其他</el-checkbox>
-                </el-checkbox-group>
+                <el-radio-group v-model="issueForm.browser">
+                  <el-radio label="1">IE</el-radio>
+                  <el-radio label="2">Microsoft Edge</el-radio>
+                  <el-radio label="3">Chrome</el-radio>
+                  <el-radio label="4">Firefox</el-radio>
+                  <el-radio label="5">Safari</el-radio>
+                  <el-radio label="6">其他</el-radio>
+                </el-radio-group>
               </el-form-item>
 
               <el-form-item label="平台" prop="platform" required>
@@ -150,23 +199,25 @@
               </el-form-item>
 
               <el-form-item label="系统" prop="system">
-                <el-checkbox-group v-model="issueForm.system" v-if="issueForm.platform == '1'">
-                  <el-checkbox label="1">Windows 7</el-checkbox>
-                  <el-checkbox label="2">Windows 8</el-checkbox>
-                  <el-checkbox label="3">Windows 10+</el-checkbox>
-                  <el-checkbox label="4">Mac OS</el-checkbox>
-                  <el-checkbox label="5">其他</el-checkbox>
-                </el-checkbox-group>
-                <el-checkbox-group v-model="issueForm.system" v-if="issueForm.platform == '2'">
-                  <el-checkbox label="1">Android</el-checkbox>
-                  <el-checkbox label="2">iOS</el-checkbox>
-                </el-checkbox-group>
+                <el-radio-group v-model="issueForm.sys" v-if="issueForm.platform == '1'">
+                  <el-radio label="1">Windows 7</el-radio>
+                  <el-radio label="2">Windows 8</el-radio>
+                  <el-radio label="3">Windows 10+</el-radio>
+                  <el-radio label="4">Mac OS</el-radio>
+                  <el-radio label="5">其他</el-radio>
+                </el-radio-group>
+                <el-radio-group v-model="issueForm.sys" v-if="issueForm.platform == '2'">
+                  <el-radio label="1">Android</el-radio>
+                  <el-radio label="2">iOS</el-radio>
+                </el-radio-group>
               </el-form-item>
 
               <el-form-item label="期望完成时间" prop="expectedTime" required>
                 <el-date-picker
                     v-model="issueForm.expectedTime"
-                    type="date"
+                    type="datetime"
+                    value-format="YYYY-MM-DD HH:mm:ss"
+                    format="YYYY-MM-DD HH:mm:ss"
                     placeholder="请选择"
                 />
               </el-form-item>
@@ -185,81 +236,120 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
-import type { FormInstance, FormRules } from 'element-plus'
+import type { FormInstance } from 'element-plus'
 import { ElMessage } from 'element-plus'
+import { useIssueStore } from '@/stores/issue'
+import { useUserStore } from '@/stores/user'
+import { useProjectStore } from '@/stores/project'
+import { useDeptStore } from '@/stores/department'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
+const router = useRouter()
+const issueStore = useIssueStore()
+const userStore = useUserStore()
+const projectStore = useProjectStore()
+const deptStore = useDeptStore()
+
+// 表单引用
 const issueFormRef = ref<FormInstance>()
 
 // 表单数据
 const issueForm = reactive({
-  projectId: '',
-  departmentId: '',
-  tester: '',
-  handler: '',
   title: '',
   content: '',
-  taskId: '',
   type: '1',
-  bugCause: '',
-  testRound: '0',
+  bugCause: '1',
+  otherBugCause: '',
   severity: '3',
   urgency: '0',
-  browser: [],
+  browser: '',
+  otherBrowser: '',
   platform: '1',
-  system: [],
-  releasePlatform: '',
+  sys: '',
+  otherSys: '',
+  projectId: '',
+  departmentId: '',
+  testRound: '0',
+  testerId: '',
+  handlerId: '',
+  taskId: '',
   expectedTime: ''
 })
 
 // 表单验证规则
-const rules = reactive<FormRules>({
-  projectId: [
-    { required: true, message: '请选择项目', trigger: 'change' }
-  ],
-  departmentId: [
-    { required: true, message: '请选择部门', trigger: 'change' }
-  ],
-  tester: [
-    { required: true, message: '请选择测试人', trigger: 'change' }
-  ],
-  handler: [
-    { required: true, message: '请选择处理人', trigger: 'change' }
-  ],
-  title: [
-    { required: true, message: '请输入问题标题', trigger: 'blur' }
-  ],
-  content: [
-    { required: true, message: '请输入问题内容', trigger: 'blur' }
-  ],
-  testRound: [
-    { required: true, message: '请选择测试轮次', trigger: 'change' }
-  ],
-  platform: [
-    { required: true, message: '请选择平台', trigger: 'change' }
-  ],
-  expectedTime: [
-    { required: true, message: '请选择期望完成时间', trigger: 'change' }
-  ]
+const rules = {
+  title: [{ required: true, message: '请输入问题标题', trigger: 'blur' }],
+  content: [{ required: true, message: '请输入问题内容', trigger: 'blur' }],
+  type: [{ required: true, message: '请选择问题类型', trigger: 'change' }],
+  severity: [{ required: true, message: '请选择严重程度', trigger: 'change' }],
+  platform: [{ required: true, message: '请选择平台', trigger: 'change' }],
+  projectId: [{ required: true, message: '请选择所属项目', trigger: 'change' }],
+  testerId: [{ required: true, message: '请选择测试人员', trigger: 'change' }],
+  handlerId: [{ required: true, message: '请选择处理人', trigger: 'change' }],
+  expectedTime: [{ required: true, message: '请选择期望完成时间', trigger: 'change' }]
+}
+
+const loading = ref(false)
+
+// 初始化
+onMounted(async () => {
+  await Promise.all([
+    fetchDepartmentTree(),
+    fetchProjectTree(),
+    fetchUsers()
+  ])
 })
+
+// 下拉选项数据
+const departmentTreeData = ref([])
+const projectTreeData = ref([])
+const users = ref([])
+
+// 获取部门树
+const fetchDepartmentTree = async () => {
+  departmentTreeData.value = await deptStore.getDepartmentTreeAction()
+}
+
+// 获取项目树
+const fetchProjectTree = async () => {
+  projectTreeData.value = await projectStore.getProjectTreeAction()
+}
+
+// 获取用户列表
+const fetchUsers = async () => {
+  users.value = await userStore.getUsersAction()
+}
 
 // 提交表单
 const submitForm = async () => {
   if (!issueFormRef.value) return
-  await issueFormRef.value.validate((valid) => {
+
+  await issueFormRef.value.validate(async (valid) => {
     if (valid) {
-      ElMessage.success('问题创建成功')
+      loading.value = true
+      // 处理表单数据
+      const formData = { ...issueForm }
+
+      const result = await issueStore.createIssueAction(formData)
+
+      if (result) {
+        await router.push(`/issue/${result.id}`)
+      }
+    } else {
+      ElMessage.warning('请填写所有必填字段')
     }
   })
 }
 
 // 重置表单
 const resetForm = () => {
-  if (!issueFormRef.value) return
-  issueFormRef.value.resetFields()
+  if (issueFormRef.value) {
+    issueFormRef.value.resetFields()
+  }
 }
 </script>
 
