@@ -7,7 +7,8 @@ import { createIssue,
     transferIssue,
     updateIssueExpectedTime,
     addIssueComment,
-    getIssueComments
+    getIssueComments,
+    relateTask
 } from '@/api/issue'
 import { ElMessage } from 'element-plus'
 
@@ -115,6 +116,22 @@ export const useIssueStore = defineStore('issue', () => {
         }
     };
 
+    // 修改关联任务
+    const relateTaskAction = async (id: string, taskId: string, comment: string, workHours: number = 0) => {
+        loading.value = true;
+        const res = await relateTask(id, {taskId, comment, workHours});
+        loading.value = false;
+
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('关联任务修改成功');
+            return true;
+        } else {
+            ElMessage.error(message || '关联任务修改失败');
+            return false;
+        }
+    };
+
     // 添加问题备注
     const addIssueCommentAction = async (id: string, content: string, workHours: number = 0) => {
         loading.value = true;
@@ -179,6 +196,7 @@ export const useIssueStore = defineStore('issue', () => {
         transferIssueAction,
         updateIssueExpectedTimeAction,
         addIssueCommentAction,
-        getIssueCommentsAction
+        getIssueCommentsAction,
+        relateTaskAction
     }
 })

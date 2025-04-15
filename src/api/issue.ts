@@ -35,6 +35,15 @@ export function transferIssue(id: string, data: any) {
     });
 }
 
+// 修改关联任务
+export function relateTask(id: string, data: any) {
+    return request({
+        url: `/api/issue/relate_task/${id}`,
+        method: 'put',
+        data
+    });
+}
+
 // 修改期望完成时间
 export function updateIssueExpectedTime(id: string, data: any) {
     return request({

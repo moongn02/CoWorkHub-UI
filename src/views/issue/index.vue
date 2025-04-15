@@ -114,10 +114,10 @@
                 <span class="meta-label">其他系统</span>
                 <span class="meta-value">{{ issue.otherSys }}</span>
               </div>
-              <div v-if="issue.taskId && issue.taskId > 0" class="meta-item">
+              <div class="meta-item">
                 <span class="meta-label">关联任务</span>
                 <span class="meta-value">
-                  <el-link type="primary" @click="viewTask(issue.taskId)">{{ issue.taskTitle || issue.taskId }}</el-link>
+                  <el-link type="primary" @click="viewTask(issue.taskId)">{{ issue.taskId }}</el-link>
                 </span>
               </div>
               <div class="meta-item">
@@ -139,6 +139,7 @@
               <el-button type="primary" @click="handleModify">修改问题</el-button>
               <el-button type="success" @click="handleChangeStatus">变更状态</el-button>
               <el-button type="warning" @click="handleTransferIssue">转派问题</el-button>
+              <el-button type="primary" @click="handleRelateTask">修改关联任务</el-button>
               <el-button type="danger" @click="handleModifyExpectedTime">修改期望时间</el-button>
               <el-button type="info" @click="handleAddRemarks">备注</el-button>
             </div>
@@ -192,10 +193,10 @@
             </el-tabs>
           </el-card>
 
-          <!-- 模块5: 相关任务 -->
+          <!-- 模块5: 关联任务 -->
           <el-card class="issue-details-card tabs-card" shadow="hover">
             <el-tabs>
-              <el-tab-pane label="相关任务">
+              <el-tab-pane label="关联任务">
                 <div class="tab-content-container">
                   <div class="related-issues-section">
                     <div class="scrollable-content related-issues-content">
@@ -216,7 +217,7 @@
                           </div>
                         </div>
                       </div>
-                      <el-empty v-else description="暂无相关任务" :image-size="60" />
+                      <el-empty v-else description="暂无关联任务" :image-size="60" />
                     </div>
                   </div>
                 </div>
@@ -331,6 +332,34 @@
         </template>
       </el-dialog>
 
+      <!-- 关联任务对话框 -->
+      <el-dialog v-model="relateTaskDialogVisible" title="修改关联任务" width="600px" destroy-on-close @closed="resetRelateTaskForm">
+        <el-form :model="relateTaskForm" label-width="100px">
+          <el-form-item label="任务编号" prop="taskId">
+            <el-input v-model="relateTaskForm.taskId" placeholder="请输入任务编号" />
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="relateTaskForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
+          </el-form-item>
+          <el-form-item label="备注" prop="comment">
+            <div class="editor-container">
+              <quill-editor
+                  v-model:content="relateTaskForm.comment"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+              />
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="cancelRelateTask">取消</el-button>
+        <el-button type="primary" @click="confirmRelateTask" :loading="submitting">确认</el-button>
+      </span>
+        </template>
+      </el-dialog>
+
       <!-- 添加备注对话框 -->
       <el-dialog v-model="remarksDialogVisible" title="添加备注" width="600px" destroy-on-close @closed="resetRemarksForm">
         <el-form :model="remarksForm" label-width="100px">
@@ -404,6 +433,7 @@ const statusOptions = [
 const modifyDialogVisible = ref(false);
 const statusDialogVisible = ref(false);
 const transferDialogVisible = ref(false);
+const relateTaskDialogVisible = ref(false);
 const expectedTimeDialogVisible = ref(false);
 const remarksDialogVisible = ref(false);
 
@@ -431,6 +461,13 @@ const expectedTimeForm = reactive({
 // 备注表单
 const remarksForm = reactive({
   content: '',
+  workHours: 0
+});
+
+// 关联任务表单
+const relateTaskForm = reactive({
+  taskId: '',
+  comment: '',
   workHours: 0
 });
 
@@ -634,6 +671,60 @@ const resetExpectedTimeForm = () => {
   expectedTimeForm.workHours = 0;
 };
 
+// 打开关联任务对话框
+const handleRelateTask = () => {
+  relateTaskForm.taskId = issueDetail.value.taskId || '';
+  relateTaskForm.comment = '';
+  relateTaskForm.workHours = 0;
+  relateTaskDialogVisible.value = true;
+};
+
+// 确认关联任务
+const confirmRelateTask = async () => {
+  if (!relateTaskForm.taskId) {
+    ElMessage.warning('请输入任务编号');
+    return;
+  }
+
+  if (!relateTaskForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await issueStore.relateTaskAction(
+        issueId.value,
+        relateTaskForm.taskId,
+        relateTaskForm.comment,
+        relateTaskForm.workHours
+    );
+
+    if (success) {
+      relateTaskDialogVisible.value = false;
+
+      await getIssueDetails();
+    }
+  } catch (error) {
+    ElMessage.error('关联任务失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消关联任务
+const cancelRelateTask = () => {
+  relateTaskDialogVisible.value = false;
+};
+
+// 重置关联任务表单
+const resetRelateTaskForm = () => {
+  relateTaskForm.taskId = '';
+  relateTaskForm.comment = '';
+  relateTaskForm.workHours = 0;
+};
+
+
 // 打开添加备注对话框
 const handleAddRemarks = () => {
   remarksForm.content = '';
@@ -685,6 +776,10 @@ watch(statusDialogVisible, (val) => {
 
 watch(transferDialogVisible, (val) => {
   if (!val) resetTransferForm();
+});
+
+watch(relateTaskDialogVisible, (val) => {
+  if (!val) resetRelateTaskForm();
 });
 
 watch(expectedTimeDialogVisible, (val) => {
@@ -743,6 +838,7 @@ const getSeverityType = (severity) => {
 
 // 查看关联任务
 const viewTask = (taskId) => {
+  if (taskId === 0) return
   router.push(`/task/${taskId}`)
 }
 
