@@ -128,7 +128,7 @@
 
               <el-form-item label="任务内容" prop="content" required>
                 <div class="editor-container">
-                  <QuillEditor v-model:content="taskForm.content" contentType="html" theme="snow" />
+                  <QuillEditor v-model:content="taskForm.content" contentType="html" toolbar="full" theme="snow" />
                 </div>
               </el-form-item>
             </div>

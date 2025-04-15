@@ -133,7 +133,7 @@
 
               <el-form-item label="问题内容" prop="content" required>
                 <div class="editor-container">
-                  <QuillEditor v-model:content="issueForm.content" contentType="html" theme="snow" />
+                  <QuillEditor v-model:content="issueForm.content" contentType="html" toolbar="full" theme="snow" />
                 </div>
               </el-form-item>
             </div>
