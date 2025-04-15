@@ -485,6 +485,11 @@ const confirmChangeStatus = async () => {
     return;
   }
 
+  if (!statusForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
   submitting.value = true;
   try {
     const success = await taskStore.updateTaskStatusAction(
@@ -536,6 +541,11 @@ const handleTransferTask = () => {
 const confirmTransferTask = async () => {
   if (!transferForm.handlerId) {
     ElMessage.warning('请选择处理人');
+    return;
+  }
+
+  if (!transferForm.comment) {
+    ElMessage.warning('请输入备注');
     return;
   }
 
@@ -593,11 +603,16 @@ const confirmModifyExpectedTime = async () => {
     return;
   }
 
+  if (!expectedTimeForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
   submitting.value = true;
   try {
     const success = await taskStore.updateExpectedTimeAction(
         taskId,
-        expectedTimeForm.expectedTime,
+        formatDateTime(expectedTimeForm.expectedTime),
         expectedTimeForm.comment,
         expectedTimeForm.workHours
     );
@@ -641,7 +656,7 @@ const handleAddRemarks = () => {
 // 确认添加备注
 const confirmAddRemarks = async () => {
   if (!remarksForm.content || remarksForm.content.trim() === '') {
-    ElMessage.warning('请输入备注内容');
+    ElMessage.warning('请输入备注');
     return;
   }
 
