@@ -106,13 +106,16 @@
                 <div class="tab-content-container">
                   <div class="remarks-section">
                     <div class="scrollable-content remarks-content">
-                      <div v-if="taskMemos.length > 0">
-                        <div v-for="(memo, index) in taskMemos" :key="index" class="remark-item">
+                      <div v-if="taskComments.length > 0">
+                        <div v-for="(comment, index) in taskComments" :key="index" class="remark-item">
                           <div class="remark-header">
-                            <span class="remark-user">{{ memo.user }}</span>
-                            <span class="remark-time">{{ memo.time }}</span>
+                            <span class="remark-user">{{ comment.creatorName }}</span>
+                            <span class="remark-time">{{ formatDateTime(comment.updateTime) }}</span>
                           </div>
-                          <div class="remark-content">{{ memo.content }}</div>
+                          <div class="remark-content" v-html="comment.content"></div>
+                          <div class="remark-work-hours">
+                            记录工时: <span class="work-hours-value">{{ comment.workHours }} 小时</span>
+                          </div>
                         </div>
                       </div>
                       <el-empty v-else description="暂无备注" :image-size="60" />
@@ -227,168 +230,123 @@
         </div>
       </div>
 
-      <!-- 修改任务对话框 -->
-      <el-dialog v-model="modifyDialogVisible" title="修改任务" width="60%">
-        <el-form :model="modifyForm" label-width="100px" label-position="right">
-          <el-form-item label="任务标题" required>
-            <el-input v-model="modifyForm.title" placeholder="请输入任务标题" />
-          </el-form-item>
-          <el-form-item label="任务内容" required>
-            <el-input v-model="modifyForm.content" type="textarea" :rows="6" placeholder="请输入任务内容" />
-          </el-form-item>
-          <el-form-item label="所属项目">
-            <el-select v-model="modifyForm.projectId" placeholder="请选择项目" style="width: 100%">
-              <el-option
-                  v-for="project in projectOptions"
-                  :key="project.id"
-                  :label="project.name"
-                  :value="project.id"
-              />
+      <el-dialog v-model="statusDialogVisible" title="变更任务状态" width="600px" destroy-on-close>
+        <el-form :model="statusForm" label-width="100px">
+          <el-form-item label="状态" prop="status">
+            <el-select v-model="statusForm.status" placeholder="请选择状态" style="width: 100%">
+              <el-option v-for="item in statusOptions" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
           </el-form-item>
-          <el-form-item label="所属部门">
-            <el-select v-model="modifyForm.departmentId" placeholder="请选择部门" style="width: 100%">
-              <el-option
-                  v-for="department in departmentOptions"
-                  :key="department.id"
-                  :label="department.name"
-                  :value="department.id"
-              />
-            </el-select>
+          <el-form-item label="备注" prop="comment">
+            <quill-editor
+                v-model:content="statusForm.comment"
+                contentType="html"
+                theme="snow"
+                toolbar="full"
+                style="height: 200px"
+            />
           </el-form-item>
-          <el-form-item label="验收人">
-            <el-select v-model="modifyForm.acceptorId" placeholder="请选择验收人" style="width: 100%">
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="statusForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="cancelChangeStatus">取消</el-button>
+        <el-button type="primary" @click="confirmChangeStatus" :loading="submitting">确认</el-button>
+      </span>
+        </template>
+      </el-dialog>
+
+      <!-- 转派任务对话框 -->
+      <el-dialog v-model="transferDialogVisible" title="转派任务" width="600px" destroy-on-close>
+        <el-form :model="transferForm" label-width="100px">
+          <el-form-item label="转派给" prop="handlerId">
+            <el-select v-model="transferForm.handlerId" placeholder="请选择处理人" style="width: 100%">
               <el-option
                   v-for="user in userOptions"
                   :key="user.id"
-                  :label="user.name"
+                  :label="user.realName"
                   :value="user.id"
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="优先级">
-            <el-select v-model="modifyForm.priority" placeholder="请选择优先级" style="width: 100%">
-              <el-option label="高" :value="1" />
-              <el-option label="中" :value="2" />
-              <el-option label="低" :value="3" />
-            </el-select>
+          <el-form-item label="备注" prop="comment">
+            <quill-editor
+                v-model:content="transferForm.comment"
+                contentType="html"
+                theme="snow"
+                toolbar="full"
+                style="height: 200px"
+            />
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="transferForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="modifyDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmModify">确认</el-button>
-        </span>
-        </template>
-      </el-dialog>
-
-      <!-- 更改状态对话框 -->
-      <el-dialog v-model="statusDialogVisible" title="更改任务状态" width="30%">
-        <el-form :model="statusForm">
-          <el-form-item label="状态">
-            <el-select v-model="statusForm.status" placeholder="请选择状态">
-              <el-option label="已分派" :value="1" />
-              <el-option label="处理中" :value="2" />
-              <el-option label="已完成" :value="3" />
-              <el-option label="测试中" :value="4" />
-              <el-option label="已暂停" :value="5" />
-              <el-option label="已关闭" :value="6" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="statusForm.remark" type="textarea" rows="3" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="statusDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmChangeStatus">确认</el-button>
-        </span>
-        </template>
-      </el-dialog>
-
-      <!-- 拆分任务对话框 -->
-      <el-dialog v-model="splitDialogVisible" title="拆分任务" width="50%">
-        <!-- 这里可以添加拆分任务的表单 -->
-        <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="splitDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmSplitTask">确认</el-button>
-        </span>
-        </template>
-      </el-dialog>
-
-      <!-- 创建关联问题对话框 -->
-      <el-dialog v-model="issueDialogVisible" title="创建关联问题" width="50%">
-        <!-- 这里可以添加创建关联问题的表单 -->
-        <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="issueDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmCreateIssue">确认</el-button>
-        </span>
-        </template>
-      </el-dialog>
-
-      <!-- 转交任务对话框 -->
-      <el-dialog v-model="transferDialogVisible" title="转交任务" width="30%">
-        <el-form :model="transferForm">
-          <el-form-item label="转交给">
-            <el-select v-model="transferForm.handlerId" placeholder="请选择执行人">
-              <el-option
-                  v-for="user in userOptions"
-                  :key="user.id"
-                  :label="user.name"
-                  :value="user.id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="transferForm.reason" type="textarea" rows="3" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="transferDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmTransferTask">确认</el-button>
-        </span>
+      <span class="dialog-footer">
+        <el-button @click="cancelTransferTask">取消</el-button>
+        <el-button type="primary" @click="confirmTransferTask" :loading="submitting">确认</el-button>
+      </span>
         </template>
       </el-dialog>
 
       <!-- 修改期望完成时间对话框 -->
-      <el-dialog v-model="expectedTimeDialogVisible" title="修改期望完成时间" width="30%">
-        <el-form :model="expectedTimeForm">
-          <el-form-item label="期望完成时间">
+      <el-dialog v-model="expectedTimeDialogVisible" title="修改期望完成时间" width="600px" destroy-on-close>
+        <el-form :model="expectedTimeForm" label-width="120px">
+          <el-form-item label="期望完成时间" prop="expectedTime">
             <el-date-picker
-                v-model="expectedTimeForm.expected_time"
+                v-model="expectedTimeForm.expectedTime"
                 type="datetime"
                 placeholder="选择日期时间"
+                format="YYYY-MM-DD HH:mm:ss"
+                value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="expectedTimeForm.reason" type="textarea" rows="3" />
+          <el-form-item label="备注" prop="comment">
+            <quill-editor
+                v-model:content="expectedTimeForm.comment"
+                contentType="html"
+                theme="snow"
+                toolbar="full"
+                style="height: 200px"
+            />
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="expectedTimeForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="expectedTimeDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmModifyExpectedTime">确认</el-button>
-        </span>
+      <span class="dialog-footer">
+        <el-button @click="cancelModifyExpectedTime">取消</el-button>
+        <el-button type="primary" @click="confirmModifyExpectedTime" :loading="submitting">确认</el-button>
+      </span>
         </template>
       </el-dialog>
 
       <!-- 添加备注对话框 -->
-      <el-dialog v-model="remarksDialogVisible" title="添加备注" width="40%">
-        <el-form :model="remarksForm">
-          <el-form-item label="内容">
-            <el-input v-model="remarksForm.content" type="textarea" :rows="5" placeholder="请输入备注内容" />
+      <el-dialog v-model="remarksDialogVisible" title="添加备注" width="600px" destroy-on-close>
+        <el-form :model="remarksForm" label-width="100px">
+          <el-form-item label="备注内容" prop="content">
+            <quill-editor
+                v-model:content="remarksForm.content"
+                contentType="html"
+                theme="snow"
+                toolbar="full"
+                style="height: 200px"
+            />
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="remarksForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="remarksDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAddRemarks">确认</el-button>
-        </span>
+      <span class="dialog-footer">
+        <el-button @click="cancelAddRemarks">取消</el-button>
+        <el-button type="primary" @click="confirmAddRemarks" :loading="submitting">确认</el-button>
+      </span>
         </template>
       </el-dialog>
     </template>
@@ -396,13 +354,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import { ElMessage } from 'element-plus'
 import { useTaskStore } from '@/stores/task'
-import { useDeptStore } from '@/stores/department'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '@/stores/user';
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 // 获取路由参数
 const route = useRoute()
@@ -410,10 +369,12 @@ const taskId = route.params.id
 
 // 初始化stores
 const taskStore = useTaskStore()
+const userStore = useUserStore()
 
 // 任务数据
 const task = ref({})
 const loading = ref(true)
+const submitting = ref(false)
 
 // 模拟数据（临时使用）
 const taskMemos = ref([])
@@ -424,61 +385,77 @@ const parentTask = ref(null)
 
 // 下拉选项
 const userOptions = ref([])
-const projectOptions = ref([])
-const departmentOptions = ref([])
+
+// 状态选项
+const statusOptions = [
+  { value: 1, label: '已分派' },
+  { value: 2, label: '处理中' },
+  { value: 3, label: '已完成' },
+  { value: 4, label: '测试中' },
+  { value: 5, label: '已暂停' },
+  { value: 6, label: '已关闭' }
+];
+
+// 对话框显示状态
+const statusDialogVisible = ref(false);
+const transferDialogVisible = ref(false);
+const expectedTimeDialogVisible = ref(false);
+const remarksDialogVisible = ref(false);
+
+// 表单数据
+const statusForm = reactive({
+  status: null,
+  comment: '',
+  workHours: 0
+});
+
+const transferForm = reactive({
+  handlerId: null,
+  comment: '',
+  workHours: 0
+});
+
+const expectedTimeForm = reactive({
+  expectedTime: '',
+  comment: '',
+  workHours: 0
+});
+
+const remarksForm = reactive({
+  content: '',
+  workHours: 0
+});
+
+// 任务备注数据
+const taskComments = computed(() => taskStore.taskComments);
+
+// 初始化数据
+onMounted(async () => {
+  await Promise.all([
+    fetchTaskDetail(),
+    fetchUsers(),
+    fetchTaskComments()
+  ]);
+});
+
+// 获取用户列表
+const fetchUsers = async () => {
+  const users = await userStore.getUsersAction();
+  if (users) {
+    userOptions.value = users;
+  }
+};
+
+// 获取任务备注
+const fetchTaskComments = async () => {
+  await taskStore.getTaskCommentsAction(taskId);
+};
 
 // 获取相关数据（子任务、问题等）
 const fetchRelatedData = async () => {
   // 如果有子任务、相关问题等，可以在这里加载
   // 示例：await fetchSubTasks()
 }
-
-// 组件挂载时获取数据
-onMounted(() => {
-  fetchTaskDetail()
-})
-
-// 对话框状态
-const modifyDialogVisible = ref(false)
-const statusDialogVisible = ref(false)
-const splitDialogVisible = ref(false)
-const issueDialogVisible = ref(false)
-const transferDialogVisible = ref(false)
-const expectedTimeDialogVisible = ref(false)
-const remarksDialogVisible = ref(false)
-
-// 表单数据
-const modifyForm = ref({
-  title: '',
-  content: '',
-  projectId: null,
-  departmentId: null,
-  acceptorId: null,
-  priority: null
-})
-
-const statusForm = ref({
-  status: null,
-  remark: ''
-})
-
-const transferForm = ref({
-  handler_id: null,
-  reason: ''
-})
-
-const expectedTimeForm = ref({
-  expected_time: '',
-  reason: ''
-})
-
-const remarksForm = ref({
-  content: ''
-})
-
-const commentForm = ref({
-  content: ''
-})
 
 // 根据ID获取任务详情
 const fetchTaskDetail = async () => {
@@ -492,6 +469,238 @@ const fetchTaskDetail = async () => {
 
   loading.value = false
 }
+
+// 变更状态
+const handleChangeStatus = () => {
+  statusForm.status = task.value.status;
+  statusForm.comment = '';
+  statusForm.workHours = 0;
+  statusDialogVisible.value = true;
+};
+
+// 确认变更状态
+const confirmChangeStatus = async () => {
+  if (!statusForm.status) {
+    ElMessage.warning('请选择状态');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await taskStore.updateTaskStatusAction(
+        taskId,
+        statusForm.status,
+        statusForm.comment,
+        statusForm.workHours
+    );
+
+    if (success) {
+      resetStatusForm();
+      statusDialogVisible.value = false;
+
+      // 重新获取任务详情和备注
+      await Promise.all([
+        fetchTaskDetail(),
+        fetchTaskComments()
+      ]);
+    }
+  } catch (error) {
+    ElMessage.error('变更状态失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消变更状态
+const cancelChangeStatus = () => {
+  resetStatusForm();
+  statusDialogVisible.value = false;
+};
+
+// 重置状态表单
+const resetStatusForm = () => {
+  statusForm.status = null;
+  statusForm.comment = '';
+  statusForm.workHours = 0;
+};
+
+// 转派任务
+const handleTransferTask = () => {
+  transferForm.handlerId = task.value.handlerId;
+  transferForm.comment = '';
+  transferForm.workHours = 0;
+  transferDialogVisible.value = true;
+};
+
+// 确认转派任务
+const confirmTransferTask = async () => {
+  if (!transferForm.handlerId) {
+    ElMessage.warning('请选择处理人');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await taskStore.transferTaskAction(
+        taskId,
+        transferForm.handlerId,
+        transferForm.comment,
+        transferForm.workHours
+    );
+
+    if (success) {
+      resetTransferForm();
+      transferDialogVisible.value = false;
+      // 重新获取任务详情和备注
+      await Promise.all([
+        fetchTaskDetail(),
+        fetchTaskComments()
+      ]);
+    }
+  } catch (error) {
+    console.error('转派任务失败:', error);
+    ElMessage.error('转派任务失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消转派任务
+const cancelTransferTask = () => {
+  resetTransferForm();
+  transferDialogVisible.value = false;
+};
+
+// 重置转派表单
+const resetTransferForm = () => {
+  transferForm.handlerId = null;
+  transferForm.comment = '';
+  transferForm.workHours = 0;
+};
+
+// 修改期望完成时间
+const handleModifyExpectedTime = () => {
+  expectedTimeForm.expectedTime = task.value.expectedTime;
+  expectedTimeForm.comment = '';
+  expectedTimeForm.workHours = 0;
+  expectedTimeDialogVisible.value = true;
+};
+
+// 确认修改期望完成时间
+const confirmModifyExpectedTime = async () => {
+  if (!expectedTimeForm.expectedTime) {
+    ElMessage.warning('请选择期望完成时间');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await taskStore.updateExpectedTimeAction(
+        taskId,
+        expectedTimeForm.expectedTime,
+        expectedTimeForm.comment,
+        expectedTimeForm.workHours
+    );
+
+    if (success) {
+      resetExpectedTimeForm();
+      expectedTimeDialogVisible.value = false;
+      // 重新获取任务详情和备注
+      await Promise.all([
+        fetchTaskDetail(),
+        fetchTaskComments()
+      ]);
+    }
+  } catch (error) {
+    ElMessage.error('修改期望完成时间失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消修改期望完成时间
+const cancelModifyExpectedTime = () => {
+  resetExpectedTimeForm();
+  expectedTimeDialogVisible.value = false;
+};
+
+// 重置期望完成时间表单
+const resetExpectedTimeForm = () => {
+  expectedTimeForm.expectedTime = '';
+  expectedTimeForm.comment = '';
+  expectedTimeForm.workHours = 0;
+};
+
+// 添加备注
+const handleAddRemarks = () => {
+  remarksForm.content = '';
+  remarksForm.workHours = 0;
+  remarksDialogVisible.value = true;
+};
+
+// 确认添加备注
+const confirmAddRemarks = async () => {
+  if (!remarksForm.content || remarksForm.content.trim() === '') {
+    ElMessage.warning('请输入备注内容');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const result = await taskStore.addTaskCommentAction(
+        taskId,
+        remarksForm.content,
+        remarksForm.workHours
+    );
+
+    if (result) {
+      resetRemarksForm();
+      remarksDialogVisible.value = false;
+      await fetchTaskComments();
+    }
+  } catch (error) {
+    ElMessage.error('添加备注失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消添加备注
+const cancelAddRemarks = () => {
+  resetRemarksForm();
+  remarksDialogVisible.value = false;
+};
+
+// 重置备注表单
+const resetRemarksForm = () => {
+  remarksForm.content = '';
+  remarksForm.workHours = 0;
+};
+
+// 监听弹窗关闭事件，确保内容重置
+watch(statusDialogVisible, (newVal) => {
+  if (!newVal) {
+    resetStatusForm();
+  }
+});
+
+watch(transferDialogVisible, (newVal) => {
+  if (!newVal) {
+    resetTransferForm();
+  }
+});
+
+watch(expectedTimeDialogVisible, (newVal) => {
+  if (!newVal) {
+    resetExpectedTimeForm();
+  }
+});
+
+watch(remarksDialogVisible, (newVal) => {
+  if (!newVal) {
+    resetRemarksForm();
+  }
+});
 
 // 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
@@ -534,7 +743,6 @@ const getPriorityType = (priority: number) => {
   }
   return typeMap[priority] || 'info'
 }
-
 
 </script>
 
@@ -601,12 +809,6 @@ const getPriorityType = (priority: number) => {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.status-label {
-  font-weight: 500;
-  color: #606266;
-  min-width: 80px;
 }
 
 /* 模块行布局 */
@@ -743,6 +945,62 @@ const getPriorityType = (priority: number) => {
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.remark-content {
+  line-height: 1.5;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.remark-work-hours {
+  font-size: 12px;
+  color: #909399;
+  text-align: right;
+}
+
+.work-hours-value {
+  font-weight: 500;
+  color: #409EFF;
+}
+
+/* 编辑器容器样式 */
+:deep(.quill-editor) {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 工具栏样式 */
+:deep(.ql-toolbar.ql-snow) {
+  width: 100%;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+/* 编辑区域样式 */
+:deep(.ql-container.ql-snow) {
+  width: 100%;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* 编辑区域内容 */
+:deep(.ql-editor) {
+  min-height: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* 确保表单项占满宽度 */
+.el-form-item {
+  width: 100%;
+}
+
+/* 固定宽度的编辑器容器 */
+.editor-container {
+  width: 100%;
 }
 
 /* 进度部分 */
