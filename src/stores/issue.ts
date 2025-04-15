@@ -8,7 +8,8 @@ import { createIssue,
     updateIssueExpectedTime,
     addIssueComment,
     getIssueComments,
-    relateTask
+    relateTask,
+    getRelatedTask
 } from '@/api/issue'
 import { ElMessage } from 'element-plus'
 
@@ -17,7 +18,8 @@ export const useIssueStore = defineStore('issue', () => {
     const issueList = ref([])
     const currentIssue = ref(null)
     const loading = ref(false)
-    const issueComments = ref([]);
+    const issueComments = ref([])
+    const relatedTask = ref(null)
     const pagination = ref({
         total: 0,
         current: 1,
@@ -67,6 +69,22 @@ export const useIssueStore = defineStore('issue', () => {
             return null
         }
     }
+
+    // 获取关联任务详情
+    const getRelatedTaskAction = async (id: string) => {
+        loading.value = true;
+        const res = await getRelatedTask(id);
+        loading.value = false;
+
+        const { success, data } = res.data;
+        if (success) {
+            relatedTask.value = data;
+            return data;
+        } else {
+            relatedTask.value = null;
+            return null;
+        }
+    };
 
     // 更新问题状态
     const updateIssueStatusAction = async (id: string, status: number, comment: string, workHours: number = 0) => {
@@ -187,10 +205,12 @@ export const useIssueStore = defineStore('issue', () => {
         issueList,
         issueComments,
         currentIssue,
+        relatedTask,
         loading,
         pagination,
         createIssueAction,
         getIssueDetailAction,
+        getRelatedTaskAction,
         getIssueListAction,
         updateIssueStatusAction,
         transferIssueAction,

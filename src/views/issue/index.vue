@@ -200,7 +200,7 @@
                 <div class="tab-content-container">
                   <div class="related-issues-section">
                     <div class="scrollable-content related-issues-content">
-                      <div v-if="relatedTask">
+                      <div v-if="relatedTask" @click="viewTask(relatedTask.id)">
                         <div class="related-item">
                           <div class="related-item-header">
                             <el-tag size="small" type="primary">{{ relatedTask.id }}</el-tag>
@@ -212,7 +212,7 @@
                             <h4>{{ relatedTask.title }}</h4>
                             <p class="related-item-info">
                               <span>执行人: {{ relatedTask.handlerName }}</span>
-                              <span>期望完成: {{ formatDateTime(relatedTask.expectedTime) }}</span>
+                              <span>期望完成时间: {{ formatDateTime(relatedTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -475,7 +475,7 @@ const relateTaskForm = reactive({
 onMounted(async () => {
   await Promise.all([
     getIssueDetails(),
-    fetchUsers()
+    fetchUsers(),
   ])
 })
 
@@ -489,6 +489,7 @@ const getIssueDetails = async () => {
     issueDetail.value = res
     // 获取问题备注
     await getIssueComments();
+    await getRelatedTask();
   } else {
     ElMessage.error('获取问题详情失败');
   }
@@ -501,6 +502,16 @@ const getIssueComments = async () => {
     issueComments.value = comments || [];
   } catch (error) {
     ElMessage.error('获取问题备注失败');
+  }
+};
+
+// 获取关联任务信息
+const getRelatedTask = async () => {
+  try {
+    const relateTask = await issueStore.getRelatedTaskAction(issueId.value);
+    relatedTask.value = relateTask || [];
+  } catch (error) {
+    ElMessage.error('获取关联任务数据失败');
   }
 };
 

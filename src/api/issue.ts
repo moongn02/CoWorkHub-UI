@@ -17,6 +17,14 @@ export function getIssueDetail(id: string) {
     })
 }
 
+// 获取问题关联的任务详情
+export function getRelatedTask(id: string) {
+    return request({
+        url: `/api/issue/related_task/${id}`,
+        method: 'get'
+    });
+}
+
 // 更新问题状态
 export function updateIssueStatus(id: string, data: any) {
     return request({
