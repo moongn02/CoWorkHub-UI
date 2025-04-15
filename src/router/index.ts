@@ -52,6 +52,14 @@ const baseRoutes: RouteRecordRaw[] = [
       title: '问题详情'
     }
   },
+  {
+    path: '/issue/edit/:id',
+    name: 'IssueEdit',
+    component: () => import('@/views/issue/edit.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '修改问题' }
+  }
 ]
 
 // 将菜单配置转换为路由配置

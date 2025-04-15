@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { createIssue,
+    updateIssue,
     getIssueDetail,
     getIssueList,
     updateIssueStatus,
@@ -47,6 +48,22 @@ export const useIssueStore = defineStore('issue', () => {
             return null
         }
     }
+
+    // 修改问题
+    const updateIssueAction = async (issue: any) => {
+        loading.value = true;
+        const res = await updateIssue(issue);
+        loading.value = false;
+
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('修改问题成功');
+            return true;
+        } else {
+            ElMessage.error(message || '修改问题失败');
+            return false;
+        }
+    };
 
     // 获取问题详情
     const getIssueDetailAction = async (id: string) => {
@@ -209,6 +226,7 @@ export const useIssueStore = defineStore('issue', () => {
         loading,
         pagination,
         createIssueAction,
+        updateIssueAction,
         getIssueDetailAction,
         getRelatedTaskAction,
         getIssueListAction,

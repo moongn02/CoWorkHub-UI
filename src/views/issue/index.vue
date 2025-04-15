@@ -19,8 +19,8 @@
                   <el-tag :type="getSeverityType(issue.severity)">{{ issue.severityText }}</el-tag>
                 </div>
                 <div class="divider">/</div>
-                <div v-if="issue.urgency === 1" class="status-item">
-                  <el-tag type="danger">紧急</el-tag>
+                <div class="status-item">
+                  <el-tag :type="getUrgencyType(issue.urgency)">{{ issue.urgencyText }}</el-tag>
                 </div>
               </div>
               <div class="status-item">
@@ -781,6 +781,11 @@ const resetRemarksForm = () => {
   remarksForm.workHours = 0;
 };
 
+// 打开修改问题页面
+const handleModify = () => {
+  router.push(`/issue/edit/${issueId.value}`);
+};
+
 watch(statusDialogVisible, (val) => {
   if (!val) resetStatusForm();
 });
@@ -841,10 +846,19 @@ const getSeverityType = (severity) => {
     1: 'danger',   // 致命错误
     2: 'warning',  // 严重错误
     3: 'primary',  // 一般错误
-    4: 'info',     // 细微错误
-    5: 'success'   // 改进错误
+    4: 'success',     // 细微错误
+    5: 'info'   // 改进错误
   }
   return typeMap[severity] || 'info'
+}
+
+// 获取严重程度类型
+const getUrgencyType = (urgency) => {
+  const typeMap = {
+    0: 'primary',     // 一般
+    1: 'danger',   // 紧急
+  }
+  return typeMap[urgency] || 'info'
 }
 
 // 查看关联任务

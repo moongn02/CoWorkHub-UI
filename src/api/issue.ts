@@ -9,6 +9,15 @@ export function createIssue(data: any) {
     })
 }
 
+// 修改问题
+export function updateIssue(data: any) {
+    return request({
+        url: '/api/issue/update',
+        method: 'put',
+        data
+    });
+}
+
 // 获取问题详情
 export function getIssueDetail(id: string) {
     return request({
