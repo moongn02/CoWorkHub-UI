@@ -24,7 +24,7 @@
                 </div>
               </div>
               <div class="status-item">
-                <span>期望完成: {{ formatDateTime(issue.expectedTime) }}</span>
+                <span>{{ formatDateTime(issue.expectedTime) }}</span>
               </div>
             </div>
           </div>
