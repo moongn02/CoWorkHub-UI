@@ -17,13 +17,57 @@ export function getIssueDetail(id: string) {
     })
 }
 
-// 更新问题
-export function updateIssue(data: any) {
+// 更新问题状态
+export function updateIssueStatus(id: string, data: any) {
     return request({
-        url: '/api/issue/update',
+        url: `/api/issue/update_status/${id}`,
         method: 'put',
         data
-    })
+    });
+}
+
+// 转派问题
+export function transferIssue(id: string, data: any) {
+    return request({
+        url: `/api/issue/transfer/${id}`,
+        method: 'put',
+        data
+    });
+}
+
+// 修改期望完成时间
+export function updateIssueExpectedTime(id: string, data: any) {
+    return request({
+        url: `/api/issue/expected_time/${id}`,
+        method: 'put',
+        data
+    });
+}
+
+// 添加问题备注
+export function addIssueComment(id: string, data: any) {
+    return request({
+        url: `/api/issue/comment/${id}`,
+        method: 'post',
+        data
+    });
+}
+
+// 获取问题备注列表
+export function getIssueComments(id: string) {
+    return request({
+        url: `/api/issue/comments/${id}`,
+        method: 'get'
+    });
+}
+
+// 分页获取问题备注
+export function pageIssueComments(id: string, params: any) {
+    return request({
+        url: `/api/issue/comments/page/${id}`,
+        method: 'get',
+        params
+    });
 }
 
 // 分页获取问题列表

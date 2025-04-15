@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createIssue, getIssueDetail, getIssueList, updateIssue } from '@/api/issue'
+import { createIssue,
+    getIssueDetail,
+    getIssueList,
+    updateIssueStatus,
+    transferIssue,
+    updateIssueExpectedTime,
+    addIssueComment,
+    getIssueComments
+} from '@/api/issue'
 import { ElMessage } from 'element-plus'
 
 export const useIssueStore = defineStore('issue', () => {
@@ -8,6 +16,7 @@ export const useIssueStore = defineStore('issue', () => {
     const issueList = ref([])
     const currentIssue = ref(null)
     const loading = ref(false)
+    const issueComments = ref([]);
     const pagination = ref({
         total: 0,
         current: 1,
@@ -58,27 +67,85 @@ export const useIssueStore = defineStore('issue', () => {
         }
     }
 
-    // 更新问题
-    const updateIssueAction = async (issue: any) => {
-        loading.value = true
-        try {
-            const res = await updateIssue(issue)
-            loading.value = false
+    // 更新问题状态
+    const updateIssueStatusAction = async (id: string, status: number, comment: string, workHours: number = 0) => {
+        loading.value = true;
+        const res = await updateIssueStatus(id, {status, comment, workHours});
+        loading.value = false;
 
-            const { success, message } = res.data
-            if (success) {
-                ElMessage.success('更新问题成功')
-                return true
-            } else {
-                ElMessage.error(message || '更新问题失败')
-                return false
-            }
-        } catch (error) {
-            loading.value = false
-            ElMessage.error('更新问题失败')
-            return false
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('状态更新成功');
+            return true;
+        } else {
+            ElMessage.error(message || '状态更新失败');
+            return false;
         }
-    }
+    };
+
+    // 转派问题
+    const transferIssueAction = async (id: string, handlerId: number, comment: string, workHours: number = 0) => {
+        loading.value = true;
+        const res = await transferIssue(id, {handlerId, comment, workHours});
+        loading.value = false;
+
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('转派问题成功');
+            return true;
+        } else {
+            ElMessage.error(message || '转派问题失败');
+            return false;
+        }
+    };
+
+    // 修改期望完成时间
+    const updateIssueExpectedTimeAction = async (id: string, expectedTime: string, comment: string, workHours: number = 0) => {
+        loading.value = true;
+        const res = await updateIssueExpectedTime(id, {expectedTime, comment, workHours});
+        loading.value = false;
+
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('期望完成时间更新成功');
+            return true;
+        } else {
+            ElMessage.error(message || '期望完成时间更新失败');
+            return false;
+        }
+    };
+
+    // 添加问题备注
+    const addIssueCommentAction = async (id: string, content: string, workHours: number = 0) => {
+        loading.value = true;
+        const res = await addIssueComment(id, {content, workHours});
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            ElMessage.success('添加备注成功');
+            return data;
+        } else {
+            ElMessage.error(message || '添加备注失败');
+            return null;
+        }
+    };
+
+    // 获取问题备注列表
+    const getIssueCommentsAction = async (id: string) => {
+        loading.value = true;
+        const res = await getIssueComments(id);
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            issueComments.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取备注失败');
+            return [];
+        }
+    };
 
     // 获取问题列表（分页）
     const getIssueListAction = async (params: any) => {
@@ -101,12 +168,17 @@ export const useIssueStore = defineStore('issue', () => {
 
     return {
         issueList,
+        issueComments,
         currentIssue,
         loading,
         pagination,
         createIssueAction,
         getIssueDetailAction,
-        updateIssueAction,
-        getIssueListAction
+        getIssueListAction,
+        updateIssueStatusAction,
+        transferIssueAction,
+        updateIssueExpectedTimeAction,
+        addIssueCommentAction,
+        getIssueCommentsAction
     }
 })

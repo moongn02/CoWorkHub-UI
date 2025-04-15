@@ -154,13 +154,16 @@
                 <div class="tab-content-container">
                   <div class="remarks-section">
                     <div class="scrollable-content remarks-content">
-                      <div v-if="issueMemos.length > 0">
-                        <div v-for="(memo, index) in issueMemos" :key="index" class="remark-item">
+                      <div v-if="issueComments.length > 0">
+                        <div v-for="(comment, index) in issueComments" :key="index" class="remark-item">
                           <div class="remark-header">
-                            <span class="remark-user">{{ memo.user }}</span>
-                            <span class="remark-time">{{ memo.time }}</span>
+                            <span class="remark-user">{{ comment.creatorName }}</span>
+                            <span class="remark-time">{{ formatDateTime(comment.updateTime) }}</span>
                           </div>
-                          <div class="remark-content">{{ memo.content }}</div>
+                          <div class="remark-content" v-html="comment.content"></div>
+                          <div class="remark-work-hours">
+                            记录工时: <span class="work-hours-value">{{ comment.workHours }} 小时</span>
+                          </div>
                         </div>
                       </div>
                       <el-empty v-else description="暂无备注" :image-size="60" />
@@ -189,31 +192,31 @@
             </el-tabs>
           </el-card>
 
-          <!-- 模块5: 相关问题 -->
+          <!-- 模块5: 相关任务 -->
           <el-card class="issue-details-card tabs-card" shadow="hover">
             <el-tabs>
-              <el-tab-pane label="相关问题">
+              <el-tab-pane label="相关任务">
                 <div class="tab-content-container">
                   <div class="related-issues-section">
                     <div class="scrollable-content related-issues-content">
-                      <div v-if="relatedIssues.length > 0">
-                        <div v-for="relatedIssue in relatedIssues" :key="relatedIssue.id" class="related-item">
+                      <div v-if="relatedTask">
+                        <div class="related-item">
                           <div class="related-item-header">
-                            <el-tag size="small" type="warning">{{ relatedIssue.id }}</el-tag>
-                            <el-tag size="small" :type="getStatusType(relatedIssue.status)">
-                              {{ relatedIssue.statusText }}
+                            <el-tag size="small" type="primary">{{ relatedTask.id }}</el-tag>
+                            <el-tag size="small" :type="getStatusType(relatedTask.status)">
+                              {{ relatedTask.statusText }}
                             </el-tag>
                           </div>
                           <div class="related-item-content">
-                            <h4>{{ relatedIssue.title }}</h4>
+                            <h4>{{ relatedTask.title }}</h4>
                             <p class="related-item-info">
-                              <span>处理人: {{ relatedIssue.handlerName }}</span>
-                              <span>严重程度: {{ relatedIssue.severityText }}</span>
+                              <span>执行人: {{ relatedTask.handlerName }}</span>
+                              <span>期望完成: {{ formatDateTime(relatedTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
                       </div>
-                      <el-empty v-else description="暂无相关问题" :image-size="60" />
+                      <el-empty v-else description="暂无相关任务" :image-size="60" />
                     </div>
                   </div>
                 </div>
@@ -223,92 +226,80 @@
         </div>
       </div>
 
-      <!-- 对话框：修改问题 -->
-      <el-dialog v-model="modifyDialogVisible" title="修改问题" width="60%">
-        <el-form :model="modifyForm" label-width="100px" label-position="right">
-          <el-form-item label="问题标题" required>
-            <el-input v-model="modifyForm.title" placeholder="请输入问题标题" />
-          </el-form-item>
-          <el-form-item label="问题内容" required>
-            <el-input v-model="modifyForm.content" type="textarea" :rows="6" placeholder="请输入问题内容" />
-          </el-form-item>
-          <el-form-item label="严重程度">
-            <el-select v-model="modifyForm.severity" placeholder="请选择严重程度" style="width: 100%">
-              <el-option label="致命错误【1级】" :value="1" />
-              <el-option label="严重错误【2级】" :value="2" />
-              <el-option label="一般错误【3级】" :value="3" />
-              <el-option label="细微错误【4级】" :value="4" />
-              <el-option label="改进错误【5级】" :value="5" />
+      <!-- 变更状态对话框 -->
+      <el-dialog v-model="statusDialogVisible" title="变更问题状态" width="600px" destroy-on-close @closed="resetStatusForm">
+        <el-form :model="statusForm" label-width="100px">
+          <el-form-item label="状态" prop="status">
+            <el-select v-model="statusForm.status" placeholder="请选择状态" style="width: 100%">
+              <el-option
+                  v-for="item in statusOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+              />
             </el-select>
           </el-form-item>
-          <el-form-item label="紧急程度">
-            <el-select v-model="modifyForm.urgency" placeholder="请选择紧急程度" style="width: 100%">
-              <el-option label="一般" :value="0" />
-              <el-option label="紧急" :value="1" />
-            </el-select>
+          <el-form-item label="备注" prop="comment">
+            <div class="editor-container">
+              <quill-editor
+                  v-model:content="statusForm.comment"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+              />
+            </div>
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="statusForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="modifyDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmModify">确认</el-button>
+            <el-button @click="cancelChangeStatus">取消</el-button>
+            <el-button type="primary" @click="confirmChangeStatus" :loading="submitting">确认</el-button>
           </span>
         </template>
       </el-dialog>
 
-      <!-- 对话框：更改状态 -->
-      <el-dialog v-model="statusDialogVisible" title="更改问题状态" width="30%">
-        <el-form :model="statusForm">
-          <el-form-item label="状态">
-            <el-select v-model="statusForm.status" placeholder="请选择状态">
-              <el-option label="已分派" :value="1" />
-              <el-option label="处理中" :value="2" />
-              <el-option label="已解决" :value="3" />
-              <el-option label="已暂停" :value="4" />
-              <el-option label="已关闭" :value="5" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="statusForm.remark" type="textarea" rows="3" />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="statusDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmChangeStatus">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
-
-      <!-- 对话框：转派问题 -->
-      <el-dialog v-model="transferDialogVisible" title="转派问题" width="30%">
-        <el-form :model="transferForm">
-          <el-form-item label="转派给">
-            <el-select v-model="transferForm.handlerId" placeholder="请选择处理人">
+      <!-- 转派问题对话框 -->
+      <el-dialog v-model="transferDialogVisible" title="转派问题" width="600px" destroy-on-close @closed="resetTransferForm">
+        <el-form :model="transferForm" label-width="100px">
+          <el-form-item label="转派给" prop="handlerId">
+            <el-select v-model="transferForm.handlerId" placeholder="请选择处理人" style="width: 100%">
               <el-option
                   v-for="user in userOptions"
                   :key="user.id"
-                  :label="user.name"
+                  :label="user.realName"
                   :value="user.id"
               />
             </el-select>
           </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="transferForm.reason" type="textarea" rows="3" />
+          <el-form-item label="备注" prop="comment">
+            <div class="editor-container">
+              <quill-editor
+                  v-model:content="transferForm.comment"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+              />
+            </div>
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="transferForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="transferDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmTransferIssue">确认</el-button>
+            <el-button @click="cancelTransferIssue">取消</el-button>
+            <el-button type="primary" @click="confirmTransferIssue" :loading="submitting">确认</el-button>
           </span>
         </template>
       </el-dialog>
 
-      <!-- 对话框：修改期望完成时间 -->
-      <el-dialog v-model="expectedTimeDialogVisible" title="修改期望完成时间" width="30%">
-        <el-form :model="expectedTimeForm">
-          <el-form-item label="期望完成时间">
+      <!-- 修改期望完成时间对话框 -->
+      <el-dialog v-model="expectedTimeDialogVisible" title="修改期望完成时间" width="600px" destroy-on-close @closed="resetExpectedTimeForm">
+        <el-form :model="expectedTimeForm" label-width="120px">
+          <el-form-item label="期望完成时间" prop="expectedTime">
             <el-date-picker
                 v-model="expectedTimeForm.expectedTime"
                 type="datetime"
@@ -318,29 +309,49 @@
                 style="width: 100%"
             />
           </el-form-item>
-          <el-form-item label="备注">
-            <el-input v-model="expectedTimeForm.reason" type="textarea" rows="3" />
+          <el-form-item label="备注" prop="comment">
+            <div class="editor-container">
+              <quill-editor
+                  v-model:content="expectedTimeForm.comment"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+              />
+            </div>
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="expectedTimeForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="expectedTimeDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmModifyExpectedTime">确认</el-button>
+            <el-button @click="cancelModifyExpectedTime">取消</el-button>
+            <el-button type="primary" @click="confirmModifyExpectedTime" :loading="submitting">确认</el-button>
           </span>
         </template>
       </el-dialog>
 
-      <!-- 对话框：添加备注 -->
-      <el-dialog v-model="remarksDialogVisible" title="添加备注" width="40%">
-        <el-form :model="remarksForm">
-          <el-form-item label="内容">
-            <el-input v-model="remarksForm.content" type="textarea" :rows="5" placeholder="请输入备注内容" />
+      <!-- 添加备注对话框 -->
+      <el-dialog v-model="remarksDialogVisible" title="添加备注" width="600px" destroy-on-close @closed="resetRemarksForm">
+        <el-form :model="remarksForm" label-width="100px">
+          <el-form-item label="备注内容" prop="content">
+            <div class="editor-container">
+              <quill-editor
+                  v-model:content="remarksForm.content"
+                  contentType="html"
+                  theme="snow"
+                  toolbar="full"
+              />
+            </div>
+          </el-form-item>
+          <el-form-item label="工时记录" prop="workHours">
+            <el-input-number v-model="remarksForm.workHours" :min="0" :precision="2" :step="0.5" style="width: 100%" />
           </el-form-item>
         </el-form>
         <template #footer>
           <span class="dialog-footer">
-            <el-button @click="remarksDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmAddRemarks">确认</el-button>
+            <el-button @click="cancelAddRemarks">取消</el-button>
+            <el-button type="primary" @click="confirmAddRemarks" :loading="submitting">确认</el-button>
           </span>
         </template>
       </el-dialog>
@@ -349,17 +360,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import { ElMessage } from 'element-plus'
 import { useIssueStore } from '@/stores/issue'
 import { useUserStore } from '@/stores/user'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 // 获取路由参数
 const route = useRoute()
 const router = useRouter()
-const issueId = route.params.id
 
 // 初始化 store
 const issueStore = useIssueStore()
@@ -367,92 +379,321 @@ const userStore = useUserStore()
 
 // 问题数据
 const issue = ref({})
-const loading = ref(true)
-
-// 模拟数据（后续可替换为实际数据）
-const issueMemos = ref([])
 const issueActivities = ref([])
-const relatedIssues = ref([])
+const relatedTask = ref(null)
+
+const issueId = ref(route.params.id);
+const issueDetail = ref({});
+const issueComments = ref([]);
+const loading = ref(false);
+const submitting = ref(false);
 
 // 下拉选项
 const userOptions = ref([])
 
+// 状态选项
+const statusOptions = [
+  { value: 1, label: '待处理' },
+  { value: 2, label: '处理中' },
+  { value: 3, label: '已解决' },
+  { value: 4, label: '已暂停' },
+  { value: 5, label: '已关闭' }
+];
+
 // 对话框状态
-const modifyDialogVisible = ref(false)
-const statusDialogVisible = ref(false)
-const transferDialogVisible = ref(false)
-const expectedTimeDialogVisible = ref(false)
-const remarksDialogVisible = ref(false)
+const modifyDialogVisible = ref(false);
+const statusDialogVisible = ref(false);
+const transferDialogVisible = ref(false);
+const expectedTimeDialogVisible = ref(false);
+const remarksDialogVisible = ref(false);
 
-// 表单数据
-const modifyForm = ref({
-  title: '',
-  content: '',
-  severity: null,
-  urgency: null
-})
+// 变更状态表单
+const statusForm = reactive({
+  status: 1,
+  comment: '',
+  workHours: 0
+});
 
-const statusForm = ref({
-  status: null,
-  remark: ''
-})
-
-const transferForm = ref({
+// 转派问题表单
+const transferForm = reactive({
   handlerId: null,
-  reason: ''
-})
+  comment: '',
+  workHours: 0
+});
 
-const expectedTimeForm = ref({
+// 修改期望时间表单
+const expectedTimeForm = reactive({
   expectedTime: '',
-  reason: ''
-})
+  comment: '',
+  workHours: 0
+});
 
-const remarksForm = ref({
-  content: ''
-})
+// 备注表单
+const remarksForm = reactive({
+  content: '',
+  workHours: 0
+});
 
-// 初始化数据
+// 页面加载时获取数据
 onMounted(async () => {
   await Promise.all([
-    fetchIssueDetail(),
+    getIssueDetails(),
+    fetchUsers()
   ])
 })
 
-// 根据ID获取问题详情
-const fetchIssueDetail = async () => {
-  loading.value = true
+// 获取问题详情
+const getIssueDetails = async () => {
+  loading.value = true;
+  const res = await issueStore.getIssueDetailAction(issueId.value);
+  loading.value = false;
+  if (res) {
+    issue.value = res
+    issueDetail.value = res
+    // 获取问题备注
+    await getIssueComments();
+  } else {
+    ElMessage.error('获取问题详情失败');
+  }
+};
+
+// 获取问题备注
+const getIssueComments = async () => {
   try {
-    const issueData = await issueStore.getIssueDetailAction(issueId)
+    const comments = await issueStore.getIssueCommentsAction(issueId.value);
+    issueComments.value = comments || [];
+  } catch (error) {
+    ElMessage.error('获取问题备注失败');
+  }
+};
 
-    if (issueData) {
-      issue.value = issueData
+// 获取用户列表
+const fetchUsers = async () => {
+  const users = await userStore.getUsersAction();
+  if (users) {
+    userOptions.value = users;
+  }
+};
 
-      // 初始化修改表单数据
-      modifyForm.value = {
-        title: issueData.title,
-        content: issueData.content,
-        severity: issueData.severity,
-        urgency: issueData.urgency
-      }
+// 打开变更状态对话框
+const handleChangeStatus = () => {
+  statusForm.status = issueDetail.value.status;
+  statusForm.comment = '';
+  statusForm.workHours = 0;
+  statusDialogVisible.value = true;
+};
 
-      // 在获取问题成功后，可以加载相关数据
-      await fetchRelatedData()
-    } else {
-      ElMessage.error('问题不存在或已被删除')
-      router.push('/issue')
+// 确认变更状态
+const confirmChangeStatus = async () => {
+  if (!statusForm.status) {
+    ElMessage.warning('请选择状态');
+    return;
+  }
+
+  if (!statusForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await issueStore.updateIssueStatusAction(
+        issueId.value,
+        statusForm.status,
+        statusForm.comment,
+        statusForm.workHours
+    );
+
+    if (success) {
+      statusDialogVisible.value = false;
+
+      await getIssueDetails();
     }
   } catch (error) {
-    ElMessage.error('加载问题详情失败')
+    ElMessage.error('变更状态失败');
   } finally {
-    loading.value = false
+    submitting.value = false;
   }
-}
+};
 
-// 获取相关数据
-const fetchRelatedData = async () => {
-  // 这里可以添加获取备注、活动、相关问题等逻辑
-  console.log('获取相关数据')
-}
+// 取消变更状态
+const cancelChangeStatus = () => {
+  statusDialogVisible.value = false;
+};
+
+// 重置状态表单
+const resetStatusForm = () => {
+  statusForm.status = 1;
+  statusForm.comment = '';
+  statusForm.workHours = 0;
+};
+
+// 打开转派问题对话框
+const handleTransferIssue = () => {
+  transferForm.handlerId = issueDetail.value.handlerId;
+  transferForm.comment = '';
+  transferForm.workHours = 0;
+  transferDialogVisible.value = true;
+};
+
+// 确认转派问题
+const confirmTransferIssue = async () => {
+  if (!transferForm.handlerId) {
+    ElMessage.warning('请选择处理人');
+    return;
+  }
+
+  if (!transferForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await issueStore.transferIssueAction(
+        issueId.value,
+        transferForm.handlerId,
+        transferForm.comment,
+        transferForm.workHours
+    );
+
+    if (success) {
+      transferDialogVisible.value = false;
+
+      await getIssueDetails();
+    }
+  } catch (error) {
+    ElMessage.error('转派问题失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消转派问题
+const cancelTransferIssue = () => {
+  transferDialogVisible.value = false;
+};
+
+// 重置转派表单
+const resetTransferForm = () => {
+  transferForm.handlerId = null;
+  transferForm.comment = '';
+  transferForm.workHours = 0;
+};
+
+// 打开修改期望完成时间对话框
+const handleModifyExpectedTime = () => {
+  expectedTimeForm.expectedTime = issueDetail.value.expectedTime;
+  expectedTimeForm.comment = '';
+  expectedTimeForm.workHours = 0;
+  expectedTimeDialogVisible.value = true;
+};
+
+// 确认修改期望完成时间
+const confirmModifyExpectedTime = async () => {
+  if (!expectedTimeForm.expectedTime) {
+    ElMessage.warning('请选择期望完成时间');
+    return;
+  }
+
+  if (!expectedTimeForm.comment) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const success = await issueStore.updateIssueExpectedTimeAction(
+        issueId.value,
+        formatDateTime(expectedTimeForm.expectedTime),
+        expectedTimeForm.comment,
+        expectedTimeForm.workHours
+    );
+
+    if (success) {
+      expectedTimeDialogVisible.value = false;
+
+      await getIssueDetails();
+    }
+  } catch (error) {
+    ElMessage.error('修改期望完成时间失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消修改期望完成时间
+const cancelModifyExpectedTime = () => {
+  expectedTimeDialogVisible.value = false;
+};
+
+// 重置期望完成时间表单
+const resetExpectedTimeForm = () => {
+  expectedTimeForm.expectedTime = '';
+  expectedTimeForm.comment = '';
+  expectedTimeForm.workHours = 0;
+};
+
+// 打开添加备注对话框
+const handleAddRemarks = () => {
+  remarksForm.content = '';
+  remarksForm.workHours = 0;
+  remarksDialogVisible.value = true;
+};
+
+// 确认添加备注
+const confirmAddRemarks = async () => {
+  if (!remarksForm.content) {
+    ElMessage.warning('请输入备注');
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    const result = await issueStore.addIssueCommentAction(
+        issueId.value,
+        remarksForm.content,
+        remarksForm.workHours
+    );
+
+    if (result) {
+      remarksDialogVisible.value = false;
+
+      await getIssueComments();
+    }
+  } catch (error) {
+    ElMessage.error('添加备注失败');
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 取消添加备注
+const cancelAddRemarks = () => {
+  remarksDialogVisible.value = false;
+};
+
+// 重置备注表单
+const resetRemarksForm = () => {
+  remarksForm.content = '';
+  remarksForm.workHours = 0;
+};
+
+watch(statusDialogVisible, (val) => {
+  if (!val) resetStatusForm();
+});
+
+watch(transferDialogVisible, (val) => {
+  if (!val) resetTransferForm();
+});
+
+watch(expectedTimeDialogVisible, (val) => {
+  if (!val) resetExpectedTimeForm();
+});
+
+watch(remarksDialogVisible, (val) => {
+  if (!val) resetRemarksForm();
+});
 
 // 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
@@ -505,162 +746,6 @@ const viewTask = (taskId) => {
   router.push(`/task/${taskId}`)
 }
 
-// 处理修改问题
-const handleModify = () => {
-  modifyDialogVisible.value = true
-}
-
-// 确认修改问题
-const confirmModify = async () => {
-  try {
-    // 构建更新数据
-    const updateData = {
-      id: issue.value.id,
-      title: modifyForm.value.title,
-      content: modifyForm.value.content,
-      severity: modifyForm.value.severity,
-      urgency: modifyForm.value.urgency
-    }
-
-    // 调用更新方法
-    const success = await issueStore.updateIssueAction(updateData)
-    if (success) {
-      modifyDialogVisible.value = false
-      // 重新获取问题详情
-      await fetchIssueDetail()
-    }
-  } catch (error) {
-    console.error('修改问题失败:', error)
-    ElMessage.error('修改问题失败')
-  }
-}
-
-// 处理变更状态
-const handleChangeStatus = () => {
-  statusForm.value.status = issue.value.status
-  statusForm.value.remark = ''
-  statusDialogVisible.value = true
-}
-
-// 确认变更状态
-const confirmChangeStatus = async () => {
-  try {
-    // 构建更新数据
-    const updateData = {
-      id: issue.value.id,
-      status: statusForm.value.status
-    }
-
-    // 调用更新方法
-    const success = await issueStore.updateIssueAction(updateData)
-    if (success) {
-      // 如果有备注，可以添加备注
-      if (statusForm.value.remark) {
-        // 添加备注逻辑（可以扩展）
-      }
-
-      statusDialogVisible.value = false
-      // 重新获取问题详情
-      await fetchIssueDetail()
-    }
-  } catch (error) {
-    console.error('变更状态失败:', error)
-    ElMessage.error('变更状态失败')
-  }
-}
-
-// 处理转派问题
-const handleTransferIssue = () => {
-  transferForm.value.handlerId = issue.value.handlerId
-  transferForm.value.reason = ''
-  transferDialogVisible.value = true
-}
-
-// 确认转派问题
-const confirmTransferIssue = async () => {
-  try {
-    // 构建更新数据
-    const updateData = {
-      id: issue.value.id,
-      handlerId: transferForm.value.handlerId
-    }
-
-    // 调用更新方法
-    const success = await issueStore.updateIssueAction(updateData)
-    if (success) {
-      // 如果有备注，可以添加备注
-      if (transferForm.value.reason) {
-        // 添加备注逻辑（可以扩展）
-      }
-
-      transferDialogVisible.value = false
-      // 重新获取问题详情
-      await fetchIssueDetail()
-    }
-  } catch (error) {
-    console.error('转派问题失败:', error)
-    ElMessage.error('转派问题失败')
-  }
-}
-
-// 处理修改期望完成时间
-const handleModifyExpectedTime = () => {
-  expectedTimeForm.value.expectedTime = issue.value.expectedTime
-  expectedTimeForm.value.reason = ''
-  expectedTimeDialogVisible.value = true
-}
-
-// 确认修改期望完成时间
-const confirmModifyExpectedTime = async () => {
-  try {
-    // 构建更新数据
-    const updateData = {
-      id: issue.value.id,
-      expectedTime: expectedTimeForm.value.expectedTime
-    }
-
-    // 调用更新方法
-    const success = await issueStore.updateIssueAction(updateData)
-    if (success) {
-      // 如果有备注，可以添加备注
-      if (expectedTimeForm.value.reason) {
-        // 添加备注逻辑（可以扩展）
-      }
-
-      expectedTimeDialogVisible.value = false
-      // 重新获取问题详情
-      await fetchIssueDetail()
-    }
-  } catch (error) {
-    console.error('修改期望完成时间失败:', error)
-    ElMessage.error('修改期望完成时间失败')
-  }
-}
-
-// 处理添加备注
-const handleAddRemarks = () => {
-  remarksForm.value.content = ''
-  remarksDialogVisible.value = true
-}
-
-// 确认添加备注
-const confirmAddRemarks = async () => {
-  try {
-    // 这里应该调用添加备注的API
-    // 暂时使用模拟数据
-    issueMemos.value.unshift({
-      user: '当前用户',
-      time: formatDateTime(new Date()),
-      content: remarksForm.value.content
-    })
-
-    remarksDialogVisible.value = false
-    ElMessage.success('添加备注成功')
-  } catch (error) {
-    console.error('添加备注失败:', error)
-    ElMessage.error('添加备注失败')
-  }
-}
 </script>
 
 <style scoped>
@@ -863,16 +948,67 @@ const confirmAddRemarks = async () => {
   font-weight: 500;
 }
 
-.remark-content {
-  line-height: 1.5;
-  color: #606266;
-}
-
 .remarks-section {
   margin-bottom: 5px;
   flex: 1;
   display: flex;
   flex-direction: column;
+}
+
+.remark-content {
+  line-height: 1.5;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.remark-work-hours {
+  font-size: 12px;
+  color: #909399;
+  text-align: right;
+}
+
+.work-hours-value {
+  font-weight: 500;
+  color: #409EFF;
+}
+
+/* 编辑器容器样式 */
+:deep(.quill-editor) {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* 工具栏样式 */
+:deep(.ql-toolbar.ql-snow) {
+  width: 100%;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+/* 编辑区域样式 */
+:deep(.ql-container.ql-snow) {
+  width: 100%;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* 编辑区域内容 */
+:deep(.ql-editor) {
+  min-height: 180px;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* 确保表单项占满宽度 */
+.el-form-item {
+  width: 100%;
+}
+
+/* 固定宽度的编辑器容器 */
+.editor-container {
+  width: 100%;
 }
 
 /* 进度部分 */
