@@ -71,6 +71,14 @@ export function getTaskComments(id: string) {
     });
 }
 
+// 获取关联问题
+export const getRelatedIssues = (id: string) => {
+    return request({
+        url: `/api/task/related_issues/${id}`,
+        method: 'get'
+    });
+};
+
 // 分页获取任务备注
 export function pageTaskComments(id: string, params: any) {
     return request({

@@ -8,7 +8,9 @@ import {createTask,
     transferTask,
     updateExpectedTime,
     addTaskComment,
-    getTaskComments} from '@/api/task'
+    getTaskComments,
+    getRelatedIssues
+} from '@/api/task'
 import { ElMessage } from 'element-plus'
 
 export const useTaskStore = defineStore('task', () => {
@@ -76,7 +78,7 @@ export const useTaskStore = defineStore('task', () => {
         }
     };
 
-// 转派任务
+    // 转派任务
     const transferTaskAction = async (id: string, handlerId: number, comment: string, workHours: number = 0) => {
         loading.value = true;
         const res = await transferTask(id, { handlerId, comment, workHours });
@@ -140,6 +142,22 @@ export const useTaskStore = defineStore('task', () => {
         }
     };
 
+    // 获取关联问题
+    const getRelatedIssuesAction = async (id: string) => {
+        loading.value = true;
+        const res = await getRelatedIssues(id);
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            taskComments.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取关联问题失败');
+            return [];
+        }
+    }
+
     // 搜索任务
     // 获取分页任务列表
     const getPagingTaskListAction = async (query: any = {}) => {
@@ -178,6 +196,7 @@ export const useTaskStore = defineStore('task', () => {
         transferTaskAction,
         updateExpectedTimeAction,
         addTaskCommentAction,
+        getRelatedIssuesAction,
         getTaskCommentsAction
     }
 })

@@ -204,9 +204,9 @@
                   <div class="issues-section">
                     <div class="scrollable-content issues-content">
                       <div v-if="relatedIssues.length > 0">
-                        <div v-for="issue in relatedIssues" :key="issue.id" class="related-item">
+                        <div v-for="issue in relatedIssues" :key="issue.id" class="related-item" @click="viewIssue(issue.id)">
                           <div class="related-item-header">
-                            <el-tag size="small" type="warning">{{ issue.id }}</el-tag>
+                            <el-tag size="small" type="primary">{{ issue.id }}</el-tag>
                             <el-tag size="small" :type="getStatusType(issue.status)">
                               {{ issue.statusText }}
                             </el-tag>
@@ -215,7 +215,7 @@
                             <h4>{{ issue.title }}</h4>
                             <p class="related-item-info">
                               <span>处理人: {{ issue.handlerName }}</span>
-                              <span>优先级: {{ issue.priorityText }}</span>
+                              <span>期望完成时间: {{ formatDateTime(issue.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -376,9 +376,7 @@ const userStore = useUserStore()
 const task = ref({})
 const loading = ref(true)
 const submitting = ref(false)
-
-// 模拟数据（临时使用）
-const taskMemos = ref([])
+const taskComments = ref([])
 const taskActivities = ref([])
 const subTasks = ref([])
 const relatedIssues = ref([])
@@ -427,15 +425,13 @@ const remarksForm = reactive({
   workHours: 0
 });
 
-// 任务备注数据
-const taskComments = computed(() => taskStore.taskComments);
-
 // 初始化数据
 onMounted(async () => {
   await Promise.all([
     fetchTaskDetail(),
     fetchUsers(),
-    fetchTaskComments()
+    fetchTaskComments(),
+    fetchRelatedIssues()
   ]);
 });
 
@@ -449,14 +445,19 @@ const fetchUsers = async () => {
 
 // 获取任务备注
 const fetchTaskComments = async () => {
-  await taskStore.getTaskCommentsAction(taskId);
+  const comments = await taskStore.getTaskCommentsAction(taskId);
+  if (comments) {
+    taskComments.value = comments;
+  }
 };
 
-// 获取相关数据（子任务、问题等）
-const fetchRelatedData = async () => {
-  // 如果有子任务、相关问题等，可以在这里加载
-  // 示例：await fetchSubTasks()
-}
+// 获取关联问题
+const fetchRelatedIssues = async () => {
+  const issues = await taskStore.getRelatedIssuesAction(taskId);
+  if (issues) {
+    relatedIssues.value = issues;
+  }
+};
 
 // 根据ID获取任务详情
 const fetchTaskDetail = async () => {
@@ -464,8 +465,6 @@ const fetchTaskDetail = async () => {
   const taskData = await taskStore.getTaskDetailAction(taskId)
   if (taskData) {
     task.value = taskData
-
-    await fetchRelatedData()
   }
 
   loading.value = false
@@ -706,6 +705,12 @@ const resetRemarksForm = () => {
   remarksForm.content = '';
   remarksForm.workHours = 0;
 };
+
+// 查看关联问题
+const viewIssue = (issueId) => {
+  if (issueId === 0) return
+  router.push(`/issue/${issueId}`)
+}
 
 // 监听弹窗关闭事件，确保内容重置
 watch(statusDialogVisible, (newVal) => {
