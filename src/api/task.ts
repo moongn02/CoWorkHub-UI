@@ -10,6 +10,15 @@ export function createTask(data: any) {
     })
 }
 
+// 修改任务
+export function updateTask(data: any) {
+    return request({
+        url: '/api/task/update',
+        method: 'put',
+        data
+    })
+}
+
 // 获取任务详情
 export function getTaskDetail(id: number) {
     return request({

@@ -471,6 +471,10 @@ const fetchTaskDetail = async () => {
   loading.value = false
 }
 
+const handleModify = () => {
+  router.push(`/task/edit/${taskId}`);
+};
+
 const handleCreateIssue = () => {
   router.push({
     path: '/issue/create',

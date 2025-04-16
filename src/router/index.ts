@@ -53,6 +53,12 @@ const baseRoutes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/task/edit/:id',
+    name: 'TaskEdit',
+    component: () => import('@/views/task/edit.vue'),
+    meta: { requiresAuth: true, title: '修改任务' }
+  },
+  {
     path: '/issue/edit/:id',
     name: 'IssueEdit',
     component: () => import('@/views/issue/edit.vue'),
