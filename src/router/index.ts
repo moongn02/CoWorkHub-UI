@@ -59,6 +59,14 @@ const baseRoutes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, title: '修改任务' }
   },
   {
+    path: '/task/split/:id',
+    name: 'TaskSplit',
+    component: () => import('@/views/task/split.vue'),
+    meta: {
+      requiresAuth: true,
+      title: '拆分子任务' }
+  },
+  {
     path: '/issue/edit/:id',
     name: 'IssueEdit',
     component: () => import('@/views/issue/edit.vue'),

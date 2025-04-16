@@ -474,6 +474,10 @@ const handleModify = () => {
   router.push(`/task/edit/${taskId}`);
 };
 
+const handleSplitTask = () => {
+  router.push(`/task/split/${taskId}`);
+};
+
 const handleCreateIssue = () => {
   router.push({
     path: '/issue/create',
