@@ -174,18 +174,23 @@
               </el-tab-pane>
               <el-tab-pane label="问题进度">
                 <div class="tab-content-container">
-                  <div class="progress-section">
-                    <div class="scrollable-content progress-content">
-                      <el-timeline>
+                  <div class="activity-section">
+                    <div class="scrollable-content activities-content">
+                      <el-timeline v-if="issueActivities.length > 0">
                         <el-timeline-item
                             v-for="(activity, index) in issueActivities"
-                            :key="index"
-                            :timestamp="activity.time"
-                            :type="activity.type"
+                            :key="activity.id"
+                            :timestamp="formatDateTime(activity.createTime)"
+                            placement="top"
+                            :type="getTypeByIndex(index)"
                         >
-                          {{ activity.content }}
+                          <div class="activity-item">
+                            <span class="activity-operator">{{ activity.operatorName }}</span>
+                            <span class="activity-content">{{ activity.content }}</span>
+                          </div>
                         </el-timeline-item>
                       </el-timeline>
+                      <el-empty v-else description="暂无问题进度" :image-size="60" />
                     </div>
                   </div>
                 </div>
@@ -487,9 +492,10 @@ const getIssueDetails = async () => {
   if (res) {
     issue.value = res
     issueDetail.value = res
-    // 获取问题备注
+
     await getIssueComments();
     await getRelatedTask();
+    await getIssueActivities();
   } else {
     ElMessage.error('获取问题详情失败');
   }
@@ -512,6 +518,16 @@ const getRelatedTask = async () => {
     relatedTask.value = relateTask || [];
   } catch (error) {
     ElMessage.error('获取关联任务数据失败');
+  }
+};
+
+// 获取问题进度
+const getIssueActivities = async () => {
+  try {
+    const activities = await issueStore.getIssueActivitiesAction(issueId.value);
+    issueActivities.value = activities || [];
+  } catch (error) {
+    ElMessage.error('获取问题进度数据失败');
   }
 };
 
@@ -805,6 +821,12 @@ watch(expectedTimeDialogVisible, (val) => {
 watch(remarksDialogVisible, (val) => {
   if (!val) resetRemarksForm();
 });
+
+// 根据索引循环timeline的type
+const getTypeByIndex = (index: number) => {
+  const types = ['primary', 'success', 'warning', 'info', 'danger'];
+  return types[index % types.length];
+};
 
 // 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
@@ -1133,14 +1155,36 @@ const viewTask = (taskId) => {
 }
 
 /* 进度部分 */
-.progress-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.activity-section {
+  margin-top: 20px;
 }
 
-.progress-content {
-  flex: 1;
+.activities-content {
+  padding: 10px;
+}
+
+.activity-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+}
+
+.activity-operator {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.activity-content {
+  color: #606266;
+}
+
+:deep(.el-timeline-item__timestamp) {
+  font-size: 13px;
+  color: #909399;
+}
+
+:deep(.el-timeline-item__node--primary) {
+  background-color: #409eff;
 }
 
 .related-issues-section {

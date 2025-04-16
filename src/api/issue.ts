@@ -96,6 +96,14 @@ export function pageIssueComments(id: string, params: any) {
     });
 }
 
+// 获取问题进度
+export function getIssueActivities(id: string) {
+    return request({
+        url: `/api/issue/activities/${id}`,
+        method: 'get'
+    });
+}
+
 // 分页获取问题列表
 export function getIssueList(params: any) {
     return request({
