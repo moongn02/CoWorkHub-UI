@@ -202,14 +202,14 @@ const resetSubtasks = () => {
       title: `${parentTask.value.title}-子任务`,
       departmentId: parentTask.value.departmentId,
       handlerId: null,
-      expectedTime: '',
+      expectedTime: parentTask.value.expectedTime,
       content: ''
     },
     {
       title: `${parentTask.value.title}-子任务`,
       departmentId: parentTask.value.departmentId,
       handlerId: null,
-      expectedTime: '',
+      expectedTime: parentTask.value.expectedTime,
       content: ''
     }
   ]
@@ -243,6 +243,10 @@ const submitSplit = async () => {
     if (!subtask.expectedTime) {
       ElMessage.warning(`子任务 ${i + 1} 的期望完成时间不能为空`)
       return
+    }
+
+    if (subtask.expectedTime && subtask.expectedTime.includes('T')) {
+      subtask.expectedTime = subtask.expectedTime.replace('T', ' ')
     }
   }
 

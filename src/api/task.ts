@@ -36,6 +36,15 @@ export function updateTaskStatus(id: string, data: any) {
     });
 }
 
+// 拆分任务
+export const splitTask = (id: string, data: any) => {
+    return request({
+        url: `/api/task/split/${id}`,
+        method: 'post',
+        data
+    })
+}
+
 // 转派任务
 export function transferTask(id: string, data: any) {
     return request({

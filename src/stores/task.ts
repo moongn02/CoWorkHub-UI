@@ -9,7 +9,8 @@ import {createTask,
     updateExpectedTime,
     addTaskComment,
     getTaskComments,
-    getRelatedIssues
+    getRelatedIssues,
+    splitTask
 } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
@@ -74,6 +75,22 @@ export const useTaskStore = defineStore('task', () => {
             return true;
         } else {
             ElMessage.error(message || '状态更新失败');
+            return false;
+        }
+    };
+
+    // 拆分任务
+    const splitTaskAction = async (id: string, data: any) => {
+        loading.value = true;
+        const res = await splitTask(id, data);
+        loading.value = false;
+
+        const { success, message } = res.data;
+        if (success) {
+            ElMessage.success('任务拆分成功');
+            return true;
+        } else {
+            ElMessage.error(message || '任务拆分失败');
             return false;
         }
     };
@@ -197,6 +214,7 @@ export const useTaskStore = defineStore('task', () => {
         updateExpectedTimeAction,
         addTaskCommentAction,
         getRelatedIssuesAction,
-        getTaskCommentsAction
+        getTaskCommentsAction,
+        splitTaskAction
     }
 })
