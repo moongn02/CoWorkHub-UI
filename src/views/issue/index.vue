@@ -515,7 +515,7 @@ const getIssueComments = async () => {
 const getRelatedTask = async () => {
   try {
     const relateTask = await issueStore.getRelatedTaskAction(issueId.value);
-    relatedTask.value = relateTask || [];
+    relatedTask.value = relateTask || null;
   } catch (error) {
     ElMessage.error('获取关联任务数据失败');
   }

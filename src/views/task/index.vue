@@ -355,7 +355,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import { ElMessage } from 'element-plus'
 import { useTaskStore } from '@/stores/task'
@@ -365,6 +365,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
 // 获取路由参数
 const route = useRoute()
+const router = useRouter()
 const taskId = route.params.id
 
 // 初始化stores
@@ -469,6 +470,16 @@ const fetchTaskDetail = async () => {
 
   loading.value = false
 }
+
+const handleCreateIssue = () => {
+  router.push({
+    path: '/issue/create',
+    query: {
+      taskId: taskId,
+      returnTo: `/task/${taskId}`
+    }
+  });
+};
 
 // 变更状态
 const handleChangeStatus = () => {

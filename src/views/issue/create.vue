@@ -237,7 +237,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
 import type { FormInstance } from 'element-plus'
 import { ElMessage } from 'element-plus'
@@ -245,14 +245,17 @@ import { useIssueStore } from '@/stores/issue'
 import { useUserStore } from '@/stores/user'
 import { useProjectStore } from '@/stores/project'
 import { useDeptStore } from '@/stores/department'
+import { useTaskStore } from '@/stores/task'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 
+const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
 const userStore = useUserStore()
 const projectStore = useProjectStore()
 const deptStore = useDeptStore()
+const taskStore = useTaskStore()
 
 // 表单引用
 const issueFormRef = ref<FormInstance>()
@@ -302,6 +305,26 @@ onMounted(async () => {
     fetchProjectTree(),
     fetchUsers()
   ])
+
+  const taskIdParam = route.query.taskId
+  if (taskIdParam) {
+    issueForm.taskId = taskIdParam.toString()
+
+    try {
+      const taskDetail = await taskStore.getTaskDetailAction(taskIdParam.toString())
+      if (taskDetail) {
+        // 自动填充信息
+        issueForm.projectId = taskDetail.projectId
+        issueForm.departmentId = taskDetail.departmentId
+        issueForm.handlerId = taskDetail.handlerId
+        issueForm.expectedTime = taskDetail.expectedTime
+      }
+    } catch (error) {
+      ElMessage.error('获取任务详情失败:', error)
+    }
+  }
+
+  returnPath.value = route.query.returnTo?.toString()
 })
 
 // 下拉选项数据
@@ -334,7 +357,21 @@ const submitForm = async () => {
       // 处理表单数据
       const formData = { ...issueForm }
 
+      // 将带T的ISO格式转换为标准格式
+      if (formData.expectedTime && formData.expectedTime.includes('T')) {
+        formData.expectedTime = formData.expectedTime.replace('T', ' ')
+      }
+
+      // 检查字符串格式的数值字段并转换为数字
+      const numericFields = ['type', 'severity', 'urgency', 'bugCause', 'platform', 'browser', 'sys']
+      numericFields.forEach(field => {
+        if (formData[field] && typeof formData[field] === 'string') {
+          formData[field] = parseInt(formData[field], 10)
+        }
+      })
+
       const result = await issueStore.createIssueAction(formData)
+      loading.value = false
 
       if (result) {
         await router.push(`/issue/${result.id}`)
@@ -350,6 +387,8 @@ const resetForm = () => {
   if (issueFormRef.value) {
     issueFormRef.value.resetFields()
   }
+  // 取消时返回原页面
+  router.push(route.query.returnTo)
 }
 </script>
 
