@@ -5,7 +5,7 @@
         <!-- Header Card -->
         <el-card class="split-task-card header-card" shadow="hover">
           <div class="header-section">
-            <h2 class="page-title">拆分任务</h2>
+            <h2 class="page-title">拆分子任务</h2>
             <div class="task-info">
               <div class="task-title">{{ parentTask.title }}</div>
               <div class="task-id">任务编号: {{ parentTask.id }}</div>
@@ -36,53 +36,66 @@
                     v-if="subtasks.length > 2"
                 ></el-button>
               </div>
-
               <el-form :model="subtask" label-width="100px">
+                <el-form-item label="标题">
+                  <el-input v-model="subtask.title" placeholder="请输入子任务标题"></el-input>
+                </el-form-item>
                 <el-form-item label="所属部门">
                   <el-cascader
                       v-model="subtask.departmentId"
-                      :options="departmentOptions"
+                      :options="departmentTreeData"
                       placeholder="请选择部门"
                       clearable
                       filterable
-                      style="width: 100%"
-                  ></el-cascader>
+                      :props="{
+                          checkStrictly: true,
+                          label: 'name',
+                          value: 'id',
+                          emitPath: false
+                        }"
+                  >
+                    <template #default="{ node, data }">
+                      <div>
+                        {{ data.name }}
+                      </div>
+                    </template>
+                  </el-cascader>
                 </el-form-item>
-
                 <el-form-item label="执行人">
                   <el-select
                       v-model="subtask.handlerId"
                       placeholder="请选择执行人"
+                      clearable
                       filterable
-                      style="width: 100%"
+                      style="width: 21.5%"
                   >
                     <el-option
                         v-for="user in userOptions"
                         :key="user.id"
-                        :label="user.name"
+                        :label="user.realName"
                         :value="user.id"
                     ></el-option>
                   </el-select>
                 </el-form-item>
-
-                <el-form-item label="期望完成时间">
-                  <el-date-picker
-                      v-model="subtask.expectedTime"
-                      type="datetime"
-                      placeholder="选择日期时间"
-                  ></el-date-picker>
-                </el-form-item>
-
-                <el-form-item label="备注" class="remark-form-item">
+                <el-form-item label="任务内容" class="content-form-item">
                   <div class="quill-editor-container">
                     <QuillEditor
-                        v-model:content="subtask.remark"
+                        v-model:content="subtask.content"
                         class="quill-editor"
                         contentType="html"
                         theme="snow"
                         toolbar="full"
                     />
                   </div>
+                </el-form-item>
+                <el-form-item label="期望完成时间">
+                  <el-date-picker
+                      v-model="subtask.expectedTime"
+                      type="datetime"
+                      placeholder="选择日期时间"
+                      format="YYYY-MM-DD HH:mm:ss"
+                      value-format="YYYY-MM-DD HH:mm:ss"
+                  ></el-date-picker>
                 </el-form-item>
               </el-form>
 
@@ -94,7 +107,7 @@
         <!-- Action Buttons -->
         <div class="action-buttons">
           <el-button @click="cancel">取消</el-button>
-          <el-button type="primary" @click="submitSplit">确认拆分</el-button>
+          <el-button type="primary" @click="submitSplit" :loading="submitting">确认拆分</el-button>
         </div>
       </div>
     </template>
@@ -102,93 +115,77 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import Layout from '@/components/Layout.vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { useTaskStore } from '@/stores/task'
+import { useDeptStore } from '@/stores/department'
+import { useUserStore } from '@/stores/user'
 
-// 模拟数据 - 父任务
-const parentTask = reactive({
-  id: 1001,
-  title: '开发用户管理模块',
-  projectId: 1,
-  projectName: '协同办公系统',
-  departmentId: 2,
-  departmentName: '技术部',
-  handlerId: 101,
-  handlerName: '张三',
-  expectedTime: '2025-05-15 18:00:00',
-  status: 1,
-  statusText: '已分派',
-  priority: 2,
-  priorityText: '中'
-})
+// 获取路由参数
+const route = useRoute()
+const router = useRouter()
+const taskId = route.params.id
 
-// 模拟数据 - 部门选项
-const departmentOptions = [
-  {
-    value: 1,
-    label: '产品部',
-    children: [
-      {value: 11, label: '产品设计组'},
-      {value: 12, label: '产品运营组'}
-    ]
-  },
-  {
-    value: 2,
-    label: '技术部',
-    children: [
-      {value: 21, label: '前端开发组'},
-      {value: 22, label: '后端开发组'},
-      {value: 23, label: '测试组'}
-    ]
-  },
-  {
-    value: 3,
-    label: '市场部',
-    children: [
-      {value: 31, label: '市场推广组'},
-      {value: 32, label: '销售组'}
-    ]
-  }
-]
+// 初始化stores
+const taskStore = useTaskStore()
+const deptStore = useDeptStore()
+const userStore = useUserStore()
 
-// 模拟数据 - 用户选项
-const userOptions = [
-  {id: 101, name: '张三'},
-  {id: 102, name: '李四'},
-  {id: 103, name: '王五'},
-  {id: 104, name: '赵六'},
-  {id: 105, name: '钱七'},
-  {id: 106, name: '孙八'}
-]
+// 父任务数据
+const parentTask = ref({})
 
-// 初始子任务数据
-const initialSubtasks = [
-  {
-    departmentId: [2, 21],
-    handlerId: 102,
-    expectedTime: '2025-05-10 18:00:00',
-    remark: ''
-  },
-  {
-    departmentId: [2, 22],
-    handlerId: 103,
-    expectedTime: '2025-05-12 18:00:00',
-    remark: ''
-  }
-]
+// 部门和用户选项
+const departmentTreeData = ref([])
+const userOptions = ref([])
 
 // 子任务列表
-const subtasks = ref([...initialSubtasks])
+const subtasks = ref([])
+const submitting = ref(false)
+
+// 获取父任务详情
+const fetchTaskDetail = async () => {
+  const taskData = await taskStore.getTaskDetailAction(taskId)
+  if (taskData) {
+    parentTask.value = taskData
+    // 初始化子任务数据
+    resetSubtasks()
+  }
+}
+
+// 获取部门树
+const fetchDepartmentTree = async () => {
+  departmentTreeData.value = await deptStore.getDepartmentTreeAction()
+}
+
+// 获取用户列表
+const fetchUsers = async () => {
+  const users = await userStore.getUsersAction()
+  if (users) {
+    userOptions.value = users
+  }
+}
+
+// 初始化数据
+onMounted(async () => {
+  await Promise.all([
+    fetchTaskDetail(),
+    fetchDepartmentTree(),
+    fetchUsers()
+  ])
+})
 
 // 添加子任务
 const addSubtask = () => {
   subtasks.value.push({
-    departmentId: parentTask.departmentId ? [parentTask.departmentId] : [],
+    title: `${parentTask.value.title}-子任务`,
+    departmentId: parentTask.value.departmentId,
     handlerId: null,
     expectedTime: '',
-    remark: ''
+    content: ''
   })
 }
 
@@ -199,19 +196,65 @@ const removeSubtask = (index) => {
 
 // 重置子任务
 const resetSubtasks = () => {
-  subtasks.value = JSON.parse(JSON.stringify(initialSubtasks))
+  // 创建两个初始子任务
+  subtasks.value = [
+    {
+      title: `${parentTask.value.title}-子任务`,
+      departmentId: parentTask.value.departmentId,
+      handlerId: null,
+      expectedTime: '',
+      content: ''
+    },
+    {
+      title: `${parentTask.value.title}-子任务`,
+      departmentId: parentTask.value.departmentId,
+      handlerId: null,
+      expectedTime: '',
+      content: ''
+    }
+  ]
 }
 
 // 取消
 const cancel = () => {
-  // 这里应该是返回上一页或关闭对话框的逻辑
-  console.log('取消拆分任务')
+  router.push(`/task/${taskId}`)
 }
 
 // 提交拆分
-const submitSplit = () => {
-  // 这里应该是提交拆分任务的逻辑
-  console.log('提交拆分任务', subtasks.value)
+const submitSplit = async () => {
+  // 验证子任务数据
+  for (let i = 0; i < subtasks.value.length; i++) {
+    const subtask = subtasks.value[i]
+    if (!subtask.title) {
+      ElMessage.warning(`子任务 ${i + 1} 的标题不能为空`)
+      return
+    }
+
+    if (!subtask.departmentId) {
+      ElMessage.warning(`子任务 ${i + 1} 的部门不能为空`)
+      return
+    }
+
+    if (!subtask.handlerId) {
+      ElMessage.warning(`子任务 ${i + 1} 的执行人不能为空`)
+      return
+    }
+
+    if (!subtask.expectedTime) {
+      ElMessage.warning(`子任务 ${i + 1} 的期望完成时间不能为空`)
+      return
+    }
+  }
+
+  submitting.value = true
+  const result = await taskStore.splitTaskAction(taskId, subtasks.value)
+  if (result) {
+    ElMessage.success('任务拆分成功')
+    await router.push(`/task/${taskId}`)
+  } else {
+    ElMessage.error('任务拆分失败')
+  }
+  submitting.value = false
 }
 </script>
 
@@ -313,7 +356,7 @@ const submitSplit = () => {
 }
 
 /* Quill Editor Styles */
-.remark-form-item {
+.content-form-item {
   margin-bottom: 20px;
 }
 
