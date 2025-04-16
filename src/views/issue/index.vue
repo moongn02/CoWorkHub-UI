@@ -892,11 +892,6 @@ const viewTask = (taskId) => {
 </script>
 
 <style scoped>
-.loading-container, .error-container {
-  padding: 40px 20px;
-  text-align: center;
-}
-
 .issue-details-container {
   padding: 10px;
   display: flex;
@@ -907,6 +902,7 @@ const viewTask = (taskId) => {
 .issue-details-card {
   border-radius: 12px;
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
 .issue-details-card:hover {
@@ -961,12 +957,6 @@ const viewTask = (taskId) => {
   gap: 8px;
 }
 
-.status-label {
-  font-weight: 500;
-  color: #606266;
-  min-width: 80px;
-}
-
 /* 模块行布局 */
 .modules-row {
   display: flex;
@@ -982,11 +972,15 @@ const viewTask = (taskId) => {
 .content-card {
   flex: 3;
   min-height: 410px;
+  max-height: 410px;
+  display: flex;
+  flex-direction: column;
 }
 
 .card-header {
   padding: 0;
   border-bottom: 1px solid #ebeef5;
+  flex-shrink: 0;
 }
 
 .section-title {
@@ -998,24 +992,50 @@ const viewTask = (taskId) => {
 }
 
 .issue-content {
-  height: 320px;
-  overflow-y: auto;
+  flex: 1;
   padding: 10px 16px 16px 20px;
   line-height: 1.6;
   color: #606266;
+  overflow: auto;
+  height: calc(410px - 45px);
+  max-height: calc(410px - 45px);
+  box-sizing: border-box;
+}
+
+.issue-content :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.issue-content :deep(table) {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.issue-content :deep(pre) {
+  white-space: pre-wrap; /* 允许代码块换行 */
+  word-wrap: break-word; /* 允许长单词换行 */
 }
 
 /* 模块3: 问题元数据 */
 .meta-card {
   flex: 2;
   min-height: 410px;
+  max-height: 410px;
+  display: flex;
+  flex-direction: column;
 }
 
 .meta-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
   padding: 20px 20px 0 20px;
+  overflow-y: auto;
+  height: calc(410px - 45px);
+  max-height: calc(410px - 45px);
 }
 
 .meta-item {
@@ -1037,14 +1057,9 @@ const viewTask = (taskId) => {
   text-overflow: ellipsis;
 }
 
-/* 统一滚动条样式 */
+/* 标签内容容器 */
 .tab-content-container {
   height: 250px;
-  overflow-y: auto;
-}
-
-.issue-content, .meta-grid {
-  height: 340px;
   overflow-y: auto;
 }
 
@@ -1204,6 +1219,13 @@ const viewTask = (taskId) => {
   padding: 12px;
   margin-bottom: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.related-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .related-item-header {
@@ -1227,23 +1249,62 @@ const viewTask = (taskId) => {
 }
 
 /* 自定义滚动条 */
-.tab-content-container::-webkit-scrollbar,
 .issue-content::-webkit-scrollbar,
-.meta-grid::-webkit-scrollbar {
+.meta-grid::-webkit-scrollbar,
+.tab-content-container::-webkit-scrollbar,
+:deep(.ql-editor)::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
-.tab-content-container::-webkit-scrollbar-track,
 .issue-content::-webkit-scrollbar-track,
-.meta-grid::-webkit-scrollbar-track {
+.meta-grid::-webkit-scrollbar-track,
+.tab-content-container::-webkit-scrollbar-track,
+:deep(.ql-editor)::-webkit-scrollbar-track {
   background: #f1f1f1;
+  border-radius: 4px;
 }
 
-.tab-content-container::-webkit-scrollbar-thumb,
 .issue-content::-webkit-scrollbar-thumb,
-.meta-grid::-webkit-scrollbar-thumb {
-  background: #909399;
+.meta-grid::-webkit-scrollbar-thumb,
+.tab-content-container::-webkit-scrollbar-thumb,
+:deep(.ql-editor)::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
   border-radius: 4px;
+}
+
+.issue-content::-webkit-scrollbar-thumb:hover,
+.meta-grid::-webkit-scrollbar-thumb:hover,
+.tab-content-container::-webkit-scrollbar-thumb:hover,
+:deep(.ql-editor)::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+/* 问题内容中富文本内容样式 */
+.issue-content :deep(*) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.issue-content :deep(pre),
+.issue-content :deep(code) {
+  overflow-x: auto;
+  white-space: pre;
+  background-color: #f6f6f6;
+  border-radius: 3px;
+  padding: 2px 5px;
+}
+
+.issue-content :deep(pre) {
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.issue-content :deep(blockquote) {
+  border-left: 3px solid #ddd;
+  margin-left: 0;
+  padding-left: 10px;
+  color: #777;
 }
 
 /* 暗色主题适配 */
@@ -1286,16 +1347,24 @@ const viewTask = (taskId) => {
     color: #e5e7eb;
   }
 
-  .tab-content-container::-webkit-scrollbar-track,
   .issue-content::-webkit-scrollbar-track,
-  .meta-grid::-webkit-scrollbar-track {
+  .meta-grid::-webkit-scrollbar-track,
+  .tab-content-container::-webkit-scrollbar-track,
+  :deep(.ql-editor)::-webkit-scrollbar-track {
     background: #2d2d2d;
   }
 
-  .tab-content-container::-webkit-scrollbar-thumb,
   .issue-content::-webkit-scrollbar-thumb,
-  .meta-grid::-webkit-scrollbar-thumb {
+  .meta-grid::-webkit-scrollbar-thumb,
+  .tab-content-container::-webkit-scrollbar-thumb,
+  :deep(.ql-editor)::-webkit-scrollbar-thumb {
     background: #666;
+  }
+
+  .issue-content :deep(pre),
+  .issue-content :deep(code) {
+    background-color: #3a3a3a;
+    color: #e0e0e0;
   }
 }
 
@@ -1314,10 +1383,18 @@ const viewTask = (taskId) => {
     grid-template-columns: 1fr;
   }
 
-  .tab-content-container,
-  .issue-content,
-  .meta-grid {
-    height: 150px;
+  .content-card, .meta-card {
+    min-height: 300px;
+    max-height: 300px;
+  }
+
+  .issue-content, .meta-grid {
+    height: calc(300px - 45px);
+    max-height: calc(300px - 45px);
+  }
+
+  .tab-content-container {
+    height: 200px;
   }
 }
 </style>
