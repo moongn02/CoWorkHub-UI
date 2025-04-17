@@ -262,9 +262,26 @@ const getTaskDetail = async () => {
       taskForm.acceptorId = taskData.acceptorId
       taskForm.title = taskData.title
       taskForm.content = taskData.content
-      taskForm.actualStartTime = taskData.actualStartTime
-      taskForm.expectedTime = taskData.expectedTime
       taskForm.status = taskData.status
+
+      // 处理日期格式
+      if (taskData.actualStartTime) {
+        // 确保日期格式正确
+        if (typeof taskData.actualStartTime === 'string' && taskData.actualStartTime.includes('T')) {
+          taskForm.actualStartTime = taskData.actualStartTime.replace('T', ' ')
+        } else {
+          taskForm.actualStartTime = taskData.actualStartTime
+        }
+      }
+
+      if (taskData.expectedTime) {
+        // 确保日期格式正确
+        if (typeof taskData.expectedTime === 'string' && taskData.expectedTime.includes('T')) {
+          taskForm.expectedTime = taskData.expectedTime.replace('T', ' ')
+        } else {
+          taskForm.expectedTime = taskData.expectedTime
+        }
+      }
     } else {
       ElMessage.error('获取任务详情失败')
       router.push('/task/list')
@@ -339,6 +356,14 @@ const submitForm = async () => {
           acceptorId: taskForm.acceptorId ? parseInt(taskForm.acceptorId) : null,
           departmentId: parseInt(taskForm.departmentId),
           projectId: parseInt(taskForm.projectId),
+        }
+
+        if (taskData.expectedTime && taskData.expectedTime.includes('T')) {
+          taskData.expectedTime = taskData.expectedTime.replace('T', ' ')
+        }
+
+        if (taskData.actualStartTime && taskData.actualStartTime.includes('T')) {
+          taskData.actualStartTime = taskData.actualStartTime.replace('T', ' ')
         }
 
         // 调用API更新任务
