@@ -80,6 +80,22 @@ export function getTaskComments(id: string) {
     });
 }
 
+// 获取父任务
+export const getParentTask = (taskId: string) => {
+    return request({
+        url: `/api/task/parent_task/${taskId}`,
+        method: 'get'
+    })
+}
+
+// 获取子任务
+export const getSubTasks = (taskId: string) => {
+    return request({
+        url: `/api/task/sub_tasks/${taskId}`,
+        method: 'get'
+    })
+}
+
 // 获取关联问题
 export const getRelatedIssues = (id: string) => {
     return request({

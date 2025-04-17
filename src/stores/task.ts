@@ -10,7 +10,9 @@ import {createTask,
     addTaskComment,
     getTaskComments,
     getRelatedIssues,
-    splitTask
+    splitTask,
+    getParentTask,
+    getSubTasks
 } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
@@ -175,6 +177,36 @@ export const useTaskStore = defineStore('task', () => {
         }
     }
 
+    const getParentTaskAction = async (taskId: string) => {
+        loading.value = true;
+        const res = await getParentTask(taskId);
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            taskComments.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取父任务失败');
+            return [];
+        }
+    }
+
+    const getSubTasksAction = async (taskId: string) => {
+        loading.value = true;
+        const res = await getSubTasks(taskId);
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            taskComments.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取子任务失败');
+            return [];
+        }
+    }
+
     // 搜索任务
     // 获取分页任务列表
     const getPagingTaskListAction = async (query: any = {}) => {
@@ -215,6 +247,8 @@ export const useTaskStore = defineStore('task', () => {
         addTaskCommentAction,
         getRelatedIssuesAction,
         getTaskCommentsAction,
-        splitTaskAction
+        splitTaskAction,
+        getParentTaskAction,
+        getSubTasksAction
     }
 })

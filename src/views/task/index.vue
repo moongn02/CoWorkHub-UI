@@ -1,7 +1,7 @@
 <template>
   <Layout>
     <template #content>
-      <div class="task-details-container">
+      <div class="task-details-container" :key="taskId">
         <!-- Module 1: Title and task number -->
         <el-card class="task-details-card title-card" shadow="hover">
           <div class="title-section">
@@ -152,7 +152,7 @@
                   <div class="subtasks-section">
                     <div class="scrollable-content subtasks-content">
                       <div v-if="parentTask">
-                        <div class="related-item">
+                        <div class="related-item" @click="viewParentTask(parentTask.id)">
                           <div class="related-item-header">
                             <el-tag size="small" type="primary">{{ parentTask.id }}</el-tag>
                             <el-tag size="small" :type="getStatusType(parentTask.status)">
@@ -163,7 +163,7 @@
                             <h4>{{ parentTask.title }}</h4>
                             <p class="related-item-info">
                               <span>执行人: {{ parentTask.handlerName }}</span>
-                              <span>期望完成: {{ formatDateTime(parentTask.expectedTime) }}</span>
+                              <span>期望完成时间: {{ formatDateTime(parentTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -178,7 +178,7 @@
                   <div class="subtasks-section">
                     <div class="scrollable-content subtasks-content">
                       <div v-if="subTasks.length > 0">
-                        <div v-for="subTask in subTasks" :key="subTask.id" class="related-item">
+                        <div v-for="subTask in subTasks" :key="subTask.id" class="related-item" @click="viewSubTask(subTask.id)">
                           <div class="related-item-header">
                             <el-tag size="small" type="primary">{{ subTask.id }}</el-tag>
                             <el-tag size="small" :type="getStatusType(subTask.status)">
@@ -189,7 +189,7 @@
                             <h4>{{ subTask.title }}</h4>
                             <p class="related-item-info">
                               <span>执行人: {{ subTask.handlerName }}</span>
-                              <span>期望完成: {{ formatDateTime(subTask.expectedTime) }}</span>
+                              <span>期望完成时间: {{ formatDateTime(subTask.expectedTime) }}</span>
                             </p>
                           </div>
                         </div>
@@ -366,7 +366,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 // 获取路由参数
 const route = useRoute()
 const router = useRouter()
-const taskId = route.params.id
+const taskId = ref(route.params.id)
 
 // 初始化stores
 const taskStore = useTaskStore()
@@ -425,15 +425,46 @@ const remarksForm = reactive({
   workHours: 0
 });
 
-// 初始化数据
+// 监听路由参数变化
+watch(
+    () => route.params.id,
+    async (newId) => {
+      if (newId && newId !== taskId.value) {
+        taskId.value = newId
+        await reloadTaskData()
+      }
+    },
+    { immediate: true }
+)
+
+// 重新加载任务数据
+const reloadTaskData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      fetchTaskDetail(),
+      fetchTaskComments(),
+      fetchParentTask(),
+      fetchSubTasks(),
+      fetchRelatedIssues()
+    ])
+  } catch (error) {
+    ElMessage.error('加载任务数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(async () => {
   await Promise.all([
-    fetchTaskDetail(),
     fetchUsers(),
+    fetchTaskDetail(),
     fetchTaskComments(),
+    fetchParentTask(),
+    fetchSubTasks(),
     fetchRelatedIssues()
   ]);
-});
+})
 
 // 获取用户列表
 const fetchUsers = async () => {
@@ -445,7 +476,7 @@ const fetchUsers = async () => {
 
 // 获取任务备注
 const fetchTaskComments = async () => {
-  const comments = await taskStore.getTaskCommentsAction(taskId);
+  const comments = await taskStore.getTaskCommentsAction(taskId.value);
   if (comments) {
     taskComments.value = comments;
   }
@@ -453,16 +484,36 @@ const fetchTaskComments = async () => {
 
 // 获取关联问题
 const fetchRelatedIssues = async () => {
-  const issues = await taskStore.getRelatedIssuesAction(taskId);
+  const issues = await taskStore.getRelatedIssuesAction(taskId.value);
   if (issues) {
     relatedIssues.value = issues;
   }
 };
 
+// 获取父任务
+const fetchParentTask = async () => {
+  const parentTaskData = await taskStore.getParentTaskAction(taskId.value)
+  if (parentTaskData) {
+    parentTask.value = parentTaskData
+  } else {
+    parentTask.value = null
+  }
+}
+
+// 获取子任务
+const fetchSubTasks = async () => {
+  const subTasksData = await taskStore.getSubTasksAction(taskId.value)
+  if (subTasksData) {
+    subTasks.value = subTasksData
+  } else {
+    subTasks.value = []
+  }
+}
+
 // 根据ID获取任务详情
 const fetchTaskDetail = async () => {
   loading.value = true
-  const taskData = await taskStore.getTaskDetailAction(taskId)
+  const taskData = await taskStore.getTaskDetailAction(taskId.value)
   if (taskData) {
     task.value = taskData
   }
@@ -471,19 +522,19 @@ const fetchTaskDetail = async () => {
 }
 
 const handleModify = () => {
-  router.push(`/task/edit/${taskId}`);
+  router.push(`/task/edit/${taskId.value}`);
 };
 
 const handleSplitTask = () => {
-  router.push(`/task/split/${taskId}`);
+  router.push(`/task/split/${taskId.value}`);
 };
 
 const handleCreateIssue = () => {
   router.push({
     path: '/issue/create',
     query: {
-      taskId: taskId,
-      returnTo: `/task/${taskId}`
+      taskId: taskId.value,
+      returnTo: `/task/${taskId.value}`
     }
   });
 };
@@ -511,7 +562,7 @@ const confirmChangeStatus = async () => {
   submitting.value = true;
   try {
     const success = await taskStore.updateTaskStatusAction(
-        taskId,
+        taskId.value,
         statusForm.status,
         statusForm.comment,
         statusForm.workHours
@@ -570,7 +621,7 @@ const confirmTransferTask = async () => {
   submitting.value = true;
   try {
     const success = await taskStore.transferTaskAction(
-        taskId,
+        taskId.value,
         transferForm.handlerId,
         transferForm.comment,
         transferForm.workHours
@@ -629,7 +680,7 @@ const confirmModifyExpectedTime = async () => {
   submitting.value = true;
   try {
     const success = await taskStore.updateExpectedTimeAction(
-        taskId,
+        taskId.value,
         formatDateTime(expectedTimeForm.expectedTime),
         expectedTimeForm.comment,
         expectedTimeForm.workHours
@@ -681,7 +732,7 @@ const confirmAddRemarks = async () => {
   submitting.value = true;
   try {
     const result = await taskStore.addTaskCommentAction(
-        taskId,
+        taskId.value,
         remarksForm.content,
         remarksForm.workHours
     );
@@ -714,6 +765,18 @@ const resetRemarksForm = () => {
 const viewIssue = (issueId) => {
   if (issueId === 0) return
   router.push(`/issue/${issueId}`)
+}
+
+// 查看子任务详情
+const viewSubTask = (subTaskId) => {
+  if (subTaskId === 0) return
+  router.push(`/task/${subTaskId}`)
+}
+
+// 查看父任务详情
+const viewParentTask = (parentTaskId) => {
+  if (parentTaskId === 0) return
+  router.push(`/task/${parentTaskId}`)
 }
 
 // 监听弹窗关闭事件，确保内容重置
