@@ -125,16 +125,20 @@
               </el-tab-pane>
               <el-tab-pane label="任务进度">
                 <div class="tab-content-container">
-                  <div class="progress-section">
-                    <div class="scrollable-content progress-content">
-                      <el-timeline>
+                  <div class="activity-section">
+                    <div class="scrollable-content activities-content">
+                      <el-timeline v-if="taskActivities.length > 0">
                         <el-timeline-item
                             v-for="(activity, index) in taskActivities"
-                            :key="index"
-                            :timestamp="activity.time"
-                            :type="activity.type"
+                            :key="activity.id"
+                            :timestamp="formatDateTime(activity.createTime)"
+                            placement="top"
+                            :type="getTypeByIndex(index)"
                         >
-                          {{ activity.content }}
+                          <div class="activity-item">
+                            <span class="activity-operator">{{ activity.operatorName }}</span>
+                            <span class="activity-content">{{ activity.content }}</span>
+                          </div>
                         </el-timeline-item>
                       </el-timeline>
                     </div>
@@ -446,7 +450,8 @@ const reloadTaskData = async () => {
       fetchTaskComments(),
       fetchParentTask(),
       fetchSubTasks(),
-      fetchRelatedIssues()
+      fetchRelatedIssues(),
+      fetchTaskActivities()
     ])
   } catch (error) {
     ElMessage.error('加载任务数据失败')
@@ -462,7 +467,8 @@ onMounted(async () => {
     fetchTaskComments(),
     fetchParentTask(),
     fetchSubTasks(),
-    fetchRelatedIssues()
+    fetchRelatedIssues(),
+    fetchTaskActivities()
   ]);
 })
 
@@ -481,6 +487,14 @@ const fetchTaskComments = async () => {
     taskComments.value = comments;
   }
 };
+
+// 获取任务活动
+const fetchTaskActivities = async () => {
+  const activities = await taskStore.getTaskActivitiesAction(route.params.id)
+  if (activities) {
+    taskActivities.value = activities;
+  }
+}
 
 // 获取关联问题
 const fetchRelatedIssues = async () => {
@@ -572,10 +586,10 @@ const confirmChangeStatus = async () => {
       resetStatusForm();
       statusDialogVisible.value = false;
 
-      // 重新获取任务详情和备注
       await Promise.all([
         fetchTaskDetail(),
-        fetchTaskComments()
+        fetchTaskComments(),
+        fetchTaskActivities()
       ]);
     }
   } catch (error) {
@@ -633,7 +647,8 @@ const confirmTransferTask = async () => {
       // 重新获取任务详情和备注
       await Promise.all([
         fetchTaskDetail(),
-        fetchTaskComments()
+        fetchTaskComments(),
+        fetchTaskActivities()
       ]);
     }
   } catch (error) {
@@ -689,10 +704,11 @@ const confirmModifyExpectedTime = async () => {
     if (success) {
       resetExpectedTimeForm();
       expectedTimeDialogVisible.value = false;
-      // 重新获取任务详情和备注
+
       await Promise.all([
         fetchTaskDetail(),
-        fetchTaskComments()
+        fetchTaskComments(),
+        fetchTaskActivities()
       ]);
     }
   } catch (error) {
@@ -740,7 +756,10 @@ const confirmAddRemarks = async () => {
     if (result) {
       resetRemarksForm();
       remarksDialogVisible.value = false;
-      await fetchTaskComments();
+      await Promise.all([
+        fetchTaskComments(),
+        fetchTaskActivities()
+      ]);
     }
   } catch (error) {
     ElMessage.error('添加备注失败');
@@ -803,6 +822,12 @@ watch(remarksDialogVisible, (newVal) => {
     resetRemarksForm();
   }
 });
+
+// 根据索引循环timeline的type
+const getTypeByIndex = (index: number) => {
+  const types = ['primary', 'success', 'warning', 'info', 'danger'];
+  return types[index % types.length];
+};
 
 // 格式化日期时间
 const formatDateTime = (dateTimeStr) => {
@@ -1106,14 +1131,36 @@ const getPriorityType = (priority: number) => {
 }
 
 /* 进度部分 */
-.progress-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.activity-section {
+  margin-top: 20px;
 }
 
-.progress-content {
-  flex: 1;
+.activities-content {
+  padding: 10px;
+}
+
+.activity-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+}
+
+.activity-operator {
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.activity-content {
+  color: #606266;
+}
+
+:deep(.el-timeline-item__timestamp) {
+  font-size: 13px;
+  color: #909399;
+}
+
+:deep(.el-timeline-item__node--primary) {
+  background-color: #409eff;
 }
 
 .subtasks-section, .issues-section {

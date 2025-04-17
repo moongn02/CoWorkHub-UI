@@ -12,7 +12,8 @@ import {createTask,
     getRelatedIssues,
     splitTask,
     getParentTask,
-    getSubTasks
+    getSubTasks,
+    getTaskActivities
 } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
@@ -23,6 +24,7 @@ export const useTaskStore = defineStore('task', () => {
     const loading = ref(false)
     const taskList = ref([])
     const taskComments = ref([]);
+    const taskActivities = ref([])
     const pagination = ref({
         total: 0,
         current: 1,
@@ -161,6 +163,22 @@ export const useTaskStore = defineStore('task', () => {
         }
     };
 
+    // 获取任务活动记录
+    const getTaskActivitiesAction = async (id: string) => {
+        loading.value = true;
+        const res = await getTaskActivities(id);
+        loading.value = false;
+
+        const { success, data, message } = res.data;
+        if (success) {
+            taskActivities.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取任务活动记录失败');
+            return [];
+        }
+    };
+
     // 获取关联问题
     const getRelatedIssuesAction = async (id: string) => {
         loading.value = true;
@@ -177,6 +195,7 @@ export const useTaskStore = defineStore('task', () => {
         }
     }
 
+    // 获取父任务
     const getParentTaskAction = async (taskId: string) => {
         loading.value = true;
         const res = await getParentTask(taskId);
@@ -192,6 +211,7 @@ export const useTaskStore = defineStore('task', () => {
         }
     }
 
+    // 获取子任务
     const getSubTasksAction = async (taskId: string) => {
         loading.value = true;
         const res = await getSubTasks(taskId);
@@ -249,6 +269,7 @@ export const useTaskStore = defineStore('task', () => {
         getTaskCommentsAction,
         splitTaskAction,
         getParentTaskAction,
-        getSubTasksAction
+        getSubTasksAction,
+        getTaskActivitiesAction
     }
 })

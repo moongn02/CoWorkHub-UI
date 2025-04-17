@@ -80,6 +80,14 @@ export function getTaskComments(id: string) {
     });
 }
 
+// 获取任务进度
+export const getTaskActivities = (taskId: string) => {
+    return request({
+        url: `/api/task/activities/${taskId}`,
+        method: 'get'
+    })
+}
+
 // 获取父任务
 export const getParentTask = (taskId: string) => {
     return request({
