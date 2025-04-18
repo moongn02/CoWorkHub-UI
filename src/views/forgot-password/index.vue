@@ -6,10 +6,10 @@
         <h2 class="title">CoWorkHub</h2>
       </div>
       <h3 class="subtitle">找回密码</h3>
-      <p class="description">通过你的手机号码重置密码，或邮箱重置密码</p>
+      <p class="description">通过你的邮箱重置密码</p>
       <el-form @submit.prevent="handleSubmit">
         <el-form-item>
-          <el-input v-model="emailOrPhone" placeholder="账号" />
+          <el-input v-model="email" placeholder="邮箱" />
         </el-form-item>
         <el-form-item class="verification-container">
           <el-input v-model="verificationCode" placeholder="请输入验证码" class="verification-input" />
@@ -26,12 +26,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { sendVerificationCode } from '@/api/auth';
 
-const emailOrPhone = ref('');
+const email = ref('');
 const verificationCode = ref('');
-const router = useRouter();
 
 const handleSubmit = async () => {
   // 处理下一步逻辑
@@ -41,7 +39,7 @@ const handleSubmit = async () => {
 
 const getVerificationCode = async () => {
   try {
-    await sendVerificationCode(emailOrPhone.value);
+    await sendVerificationCode(email.value);
     alert('验证码已发送');
   } catch (error) {
     console.error(error);
