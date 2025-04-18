@@ -253,7 +253,6 @@ const submitSplit = async () => {
   submitting.value = true
   const result = await taskStore.splitTaskAction(taskId, subtasks.value)
   if (result) {
-    ElMessage.success('任务拆分成功')
     await router.push(`/task/${taskId}`)
   } else {
     ElMessage.error('任务拆分失败')

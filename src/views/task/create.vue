@@ -313,12 +313,9 @@ const saveAndSplit = async () => {
       }
 
       const result = await taskStore.createTaskAction(taskData)
-      if (result) {
+      if (result && result.id) {
         // 创建成功，跳转到任务拆分页面
-        router.push({
-          path: '/task/split',
-          query: { parentId: result.id }
-        })
+        await router.push(`/task/split/${result.id}`);
       }
     }
   })
