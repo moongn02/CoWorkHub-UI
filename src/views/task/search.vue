@@ -168,11 +168,11 @@
           <!-- 分页 -->
           <div class="pagination-container">
             <el-pagination
-                background
+                v-model:current-page="searchForm.pageNum"
+                v-model:page-size="searchForm.pageSize"
+                :page-sizes="[10, 15, 20]"
                 layout="total, sizes, prev, pager, next, jumper"
-                :total="total"
-                :page-size="searchForm.pageSize"
-                :current-page="searchForm.pageNum"
+                :total="pagination.total"
                 @size-change="handleSizeChange"
                 @current-change="handleCurrentChange"
             />
@@ -204,7 +204,11 @@ const projectStore = useProjectStore()
 
 // 数据
 const loading = ref(false)
-const total = ref(0)
+const pagination = ref({
+  total: 0,
+  current: 1,
+  size: 10
+})
 const taskList = computed(() => taskStore.taskList)
 
 // 下拉选项
@@ -273,11 +277,16 @@ const fetchTasks = async () => {
     query.endDate = dateRange.value[1]
   }
 
-  await taskStore.getPagingTaskListAction(query)
+  const result = await taskStore.getPagingTaskListAction(query)
+  if (result) {
+    taskList.value = result.records
+    pagination.value.total = result.total
+  }
 }
 
 // 搜索按钮点击事件
 const handleSearch = () => {
+  searchForm.pageNum = 1
   fetchTasks()
 }
 
@@ -306,10 +315,12 @@ const handleCurrentChange = (val: number) => {
   fetchTasks()
 }
 
-const handleSizeChange = (val: number) => {
-  searchForm.pageSize = val
-  fetchTasks()
-}
+// 每页数量变化
+const handleSizeChange = (val) => {
+  searchForm.pageSize = val;
+  searchForm.pageNum = 1;
+  fetchTasks();
+};
 
 // 查看任务详情
 const viewTaskDetail = (id) => {
@@ -386,6 +397,7 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+  padding: 5px 0;
 }
 
 :deep(.el-form-item) {
@@ -393,10 +405,35 @@ onMounted(() => {
 }
 
 :deep(.el-select) {
-  width: 100%;
+  width: auto;
+  min-width: 100px;
 }
 
 :deep(.el-date-editor) {
   width: 100%;
+}
+
+:deep(.el-pagination .el-select .el-input) {
+  width: auto;
+  min-width: 110px;
+}
+
+:deep(.el-select-dropdown__item) {
+  min-width: 60px;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .pagination-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  :deep(.el-pagination) {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+  }
 }
 </style>
