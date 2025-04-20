@@ -20,21 +20,21 @@ export function register(data: RegisterData) {
 }
 
 // 发送验证码
-export function sendVerificationCode(emailOrPhone: string) {
+export function sendVerificationCode(email: string) {
   return request({
-    url: `${import.meta.env.VITE_API_URL}/api/auth/send-verification-code`,
+    url: '/api/password/send_code',
     method: 'post',
-    params: { emailOrPhone }, // 使用 params 传递参数
-  });
+    data: { email }
+  })
 }
 
 // 重置密码
-export function resetPassword(data: ResetPasswordData) {
+export function resetPassword(email: string, code: string, newPassword: string) {
   return request({
-    url: `${import.meta.env.VITE_API_URL}/api/auth/reset-password`,
+    url: '/api/password/reset',
     method: 'post',
-    data,
-  });
+    data: { email, code, newPassword }
+  })
 }
 
 // 退出登录接口
