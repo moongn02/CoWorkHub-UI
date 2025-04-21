@@ -11,7 +11,7 @@
           </template>
 
           <div class="memo-content" ref="memoContentRef">
-            <div class="memo-grid" :style="gridStyle" v-if="memos.length > 0">
+            <div v-if="memos.length > 0" class="memo-grid">
               <div v-for="(memo, index) in memos" :key="index" class="memo-item">
                 <h4>
                   {{ memo.title }}
@@ -133,42 +133,12 @@ const memoForm = reactive({
 const memoRules: FormRules = {
   title: [
     { required: true, message: '请输入标题', trigger: 'blur' },
-    { min: 1, max: 5000, message: '长度在 1 到 5000 个字符', trigger: 'blur' }
+    { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
   ],
   content: [
     { required: true, message: '请输入内容', trigger: 'blur' }
   ]
 }
-
-// 计算网格样式
-const gridStyle = computed(() => {
-  const count = memos.value.length
-  let columns = Math.ceil(Math.sqrt(count))
-  columns = Math.max(2, Math.min(columns, 4)) // 限制列数在2到4之间
-  return {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${columns}, 1fr)`,
-    gap: '20px',
-  }
-})
-
-const truncateHtml = (html, maxLength = 200) => {
-  if (!html) return '';
-
-  // 创建临时DOM元素来解析HTML
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-
-  // 获取纯文本内容
-  const textContent = tempDiv.textContent || tempDiv.innerText || '';
-
-  if (textContent.length <= maxLength) {
-    return html;
-  }
-
-  // 如果超出最大长度，返回部分内容
-  return html;
-};
 
 // 加载备忘录数据
 const loadMemos = async () => {
@@ -279,8 +249,7 @@ const resetMemoForm = () => {
 // 组件挂载后初始化
 onMounted(async () => {
   if (memoContentRef.value) {
-    memoContentRef.value.style.maxHeight = '70vh'
-    memoContentRef.value.style.overflowY = 'auto'
+    memoContentRef.value.style.maxHeight = 'none'
   }
 
   await loadMemos()
@@ -319,13 +288,20 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  min-height: 200px;
+  height: 200px;
   width: 100%;
 }
 
 .memo-content {
-  padding-right: 5px;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.memo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
 }
 
 .memo-item {
@@ -334,7 +310,8 @@ onMounted(async () => {
   padding: 15px;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  max-height: 250px;
+  min-height: 250px;
 }
 
 .memo-item h4 {
@@ -351,41 +328,54 @@ onMounted(async () => {
   margin: 0 0 10px 0;
   font-size: 14px;
   color: #303133;
-  overflow: hidden;
   line-height: 1.5;
-  max-height: 120px;
+  word-break: break-word;
   position: relative;
+  max-height: 250px;
+  overflow: hidden;
 }
 
-/* 让富文本内容在预览中正确显示 */
+/* 淡出效果 */
+.content-preview::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(227, 243, 255, 0), rgba(227, 243, 255, 1));
+  pointer-events: none;
+}
+
+/* 富文本内容样式 */
 .content-preview :deep(p) {
-  margin: 5px 0;
+  margin: 8px 0;
 }
 
 .content-preview :deep(img) {
   max-width: 100%;
   height: auto;
-  max-height: 80px;
+  max-height: 150px;
 }
 
 .content-preview :deep(ul),
 .content-preview :deep(ol) {
   padding-left: 20px;
-  margin: 5px 0;
+  margin: 8px 0;
 }
 
 .content-preview :deep(pre) {
   background-color: #f6f6f6;
-  padding: 5px;
-  border-radius: 3px;
-  overflow: auto;
-  margin: 5px 0;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  white-space: pre-wrap;
 }
 
 .content-preview :deep(blockquote) {
-  border-left: 3px solid #ddd;
-  padding-left: 10px;
-  margin: 5px 0;
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 8px 0;
   color: #666;
 }
 
@@ -395,27 +385,22 @@ onMounted(async () => {
 .content-preview :deep(h4),
 .content-preview :deep(h5),
 .content-preview :deep(h6) {
-  margin: 5px 0;
+  margin: 12px 0 8px;
 }
 
-/* 添加淡出效果，表示有更多内容 */
-.content-preview::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  height: 30px;
-  background: linear-gradient(to bottom, rgba(227, 243, 255, 0), rgba(227, 243, 255, 1));
-  pointer-events: none;
+.content-preview :deep(a) {
+  color: #409eff;
+  text-decoration: none;
 }
 
 .memo-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
   font-size: 12px;
   color: #909399;
+  padding-top: 10px;
 }
 
 .memo-editor {
@@ -496,13 +481,11 @@ onMounted(async () => {
   }
 
   .memo-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr; /* 移动端一行一个 */
   }
 
   :deep(.custom-dialog) {
-    .el-dialog {
-      width: 90% !important;
-    }
+    width: 95% !important;
   }
 }
 
@@ -527,6 +510,18 @@ onMounted(async () => {
 
   .content-preview {
     color: #e5e7eb;
+  }
+
+  .content-preview::after {
+    background: linear-gradient(to bottom, rgba(28, 58, 94, 0), rgba(28, 58, 94, 1));
+  }
+
+  .content-preview :deep(pre) {
+    background-color: #1a1a1a;
+  }
+
+  .content-preview :deep(blockquote) {
+    color: #aaa;
   }
 
   .memo-footer {
