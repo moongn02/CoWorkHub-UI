@@ -150,6 +150,8 @@ const loadMemos = async () => {
       content: item.content,
       date: item.memoDate
     }))
+  } else {
+    memos.value = []
   }
 }
 
