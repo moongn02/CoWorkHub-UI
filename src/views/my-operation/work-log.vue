@@ -104,7 +104,7 @@
                     <template #header>
                       <div class="log-item-header">
                         <span class="log-date">{{ log.logDateStr }}</span>
-                        <el-tag :type="getLogTypeTag(log.type)" effect="dark">{{ log.typeText }}</el-tag>
+                        <el-tag :type="getLogTypeTag(log.type)" effect="plain">{{ log.typeText }}</el-tag>
                       </div>
                     </template>
 
@@ -112,7 +112,7 @@
 
                     <div class="log-item-footer">
                       <div class="log-actions">
-                        <el-button type="info" size="small" @click="viewLog(log)">查看</el-button>
+                        <el-button type="primary" size="small" @click="viewLog(log)">查看</el-button>
                         <el-button type="warning" size="small" @click="editLog(log)">编辑</el-button>
                       </div>
                     </div>
