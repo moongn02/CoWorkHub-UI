@@ -41,16 +41,19 @@
                       v-model="queryForm.logType"
                       placeholder="请选择日志类型"
                       class="white-bg-input"
-                      style="width: 53%"
+                      style="width: 87%"
                   >
                     <el-option label="全部" value="" />
-                    <el-option label="日志" value="1" />
-                    <el-option label="周志" value="2" />
-                    <el-option label="月志" value="3" />
+                    <el-option label="日志" :value="1" />
+                    <el-option label="周志" :value="2" />
+                    <el-option label="月志" :value="3" />
                   </el-select>
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="handleReset" style="width: 80%; margin-top: 20px;">重置</el-button>
+                  <el-button type="primary" @click="handleSearch" style="width: 75%;">搜索</el-button>
+                </el-form-item>
+                <el-form-item>
+                  <el-button @click="handleReset" style="width: 75%;">重置</el-button>
                 </el-form-item>
               </el-form>
             </el-card>
@@ -60,15 +63,22 @@
                 <h3 class="card-title">仪表板</h3>
               </template>
               <div class="dashboard-content">
-                <el-progress type="circle" :percentage="monthProgress" :format="progressFormat" />
+                <el-progress
+                    type="circle"
+                    :percentage="statistics.percentage"
+                    :format="progressFormat"
+                    :color="statistics.percentage > 0 ? '#409eff' : '#d9dadc'"
+                    :stroke-width="8"
+                    class="custom-progress"
+                />
                 <div class="statistics">
                   <div class="stat-item">
                     <span>本月已交日志</span>
-                    <span class="stat-value">{{ submittedLogs }}</span>
+                    <span class="stat-value">{{ statistics.submittedLogs }}</span>
                   </div>
                   <div class="stat-item">
                     <span>本月需交日志</span>
-                    <span class="stat-value">{{ requiredLogs }}</span>
+                    <span class="stat-value">{{ statistics.requiredLogs }}</span>
                   </div>
                 </div>
               </div>
@@ -82,27 +92,36 @@
                   <el-button type="primary" @click="openAddLogDialog">添加日志</el-button>
                 </div>
               </template>
-              <el-timeline>
+              <el-timeline v-if="paginatedLogs.length > 0">
                 <el-timeline-item
-                    v-for="log in paginatedLogs"
+                    v-for="(log, index) in paginatedLogs"
                     :key="log.id"
-                    :timestamp="log.date"
+                    :timestamp="log.logDateStr"
                     placement="top"
-                    :type="getTimelineItemType(log.project)"
+                    :type="getTimelineItemType(index)"
                 >
                   <el-card class="log-item-card">
-                    <h4>{{ log.project }}</h4>
-                    <p>{{ log.content }}</p>
+                    <template #header>
+                      <div class="log-item-header">
+                        <span class="log-date">{{ log.logDateStr }}</span>
+                        <el-tag :type="getLogTypeTag(log.type)" effect="dark">{{ log.typeText }}</el-tag>
+                      </div>
+                    </template>
+
+                    <div class="log-content-preview" v-html="truncateHtml(log.content, 150)"></div>
+
                     <div class="log-item-footer">
-                      <span>工时: {{ log.hours }}小时</span>
-                      <div>
-                        <el-button type="primary" size="small" @click="editLog(log)">编辑</el-button>
-                        <el-button type="danger" size="small" @click="deleteLog(log)">删除</el-button>
+                      <div class="log-actions">
+                        <el-button type="info" size="small" @click="viewLog(log)">查看</el-button>
+                        <el-button type="warning" size="small" @click="editLog(log)">编辑</el-button>
                       </div>
                     </div>
                   </el-card>
                 </el-timeline-item>
               </el-timeline>
+              <div v-else class="empty-container">
+                <el-empty description="暂无工作日志" />
+              </div>
               <div class="pagination-container">
                 <el-pagination
                     v-model:current-page="currentPage"
@@ -121,226 +140,354 @@
     </template>
   </Layout>
 
-  <el-dialog v-model="addLogDialogVisible" title="添加工作日志" width="30%">
-    <el-form :model="logForm" @submit.prevent="submitLog">
-      <el-form-item label="日期" required>
+  <!-- 添加/编辑工作日志对话框 -->
+  <el-dialog
+      v-model="logDialogVisible"
+      :title="isEditing ? '编辑工作日志' : '添加工作日志'"
+      width="800px"
+      destroy-on-close
+  >
+    <el-form :model="logForm" :rules="logRules" ref="logFormRef" label-width="80px">
+      <el-form-item label="日期" prop="logDate">
         <el-date-picker
-            v-model="logForm.date"
+            v-model="logForm.logDate"
             type="date"
             placeholder="选择日期"
             class="white-bg-input"
             style="width: 50%"
         />
       </el-form-item>
-      <el-form-item label="类型" required>
+      <el-form-item label="类型" prop="type">
         <el-select
             v-model="logForm.type"
             placeholder="请选择日志类型"
             class="white-bg-input"
             style="width: 50%"
         >
-          <el-option label="日志" value="1" />
-          <el-option label="周志" value="2" />
-          <el-option label="月志" value="3" />
+          <el-option label="日志" :value="1" />
+          <el-option label="周志" :value="2" />
+          <el-option label="月志" :value="3" />
         </el-select>
       </el-form-item>
-      <el-form-item label="工作内容" required>
-        <el-input
-            v-model="logForm.content"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入今日工作内容"
-            class="white-bg-input"
-        />
-      </el-form-item>
-      <el-form-item label="工时" required>
-        <el-input-number
-            v-model="logForm.hours"
-            :min="0.5"
-            :max="24"
-            :step="0.5"
-            class="white-bg-input"
-            style="width: 50%"
+      <el-form-item label="内容" prop="content">
+        <quill-editor
+            v-model:content="logForm.content"
+            contentType="html"
+            theme="snow"
+            toolbar="full"
+            style="height: 300px; width: 100%;"
+            class="log-editor"
         />
       </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="addLogDialogVisible = false">取消</el-button>
+        <el-button @click="logDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitLog">确定</el-button>
+      </span>
+    </template>
+  </el-dialog>
+
+  <!-- 查看工作日志详情对话框 -->
+  <el-dialog
+      v-model="detailDialogVisible"
+      title="工作日志详情"
+      width="800px"
+      destroy-on-close
+      center
+  >
+    <div class="log-detail-content">
+      <div class="log-detail-header">
+        <div class="log-detail-date">
+          <span>日期：{{ detailLog.logDateStr }}</span>
+        </div>
+        <el-tag :type="getLogTypeTag(detailLog.type)" effect="dark" size="large">{{ detailLog.typeText }}</el-tag>
+      </div>
+      <div class="log-detail-divider"></div>
+      <div class="log-detail-body" v-html="detailLog.content"></div>
+    </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
       </span>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import Layout from '@/components/Layout.vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useWorkLogStore } from '@/stores/workLog'
+import type { WorkLogData, WorkLogQuery } from '@/types/workLog'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import type { FormInstance, FormRules } from 'element-plus'
 
-const queryForm = reactive({
+// 初始化 store
+const workLogStore = useWorkLogStore()
+
+// 定义查询表单
+const queryForm = reactive<WorkLogQuery>({
   dateRange: [],
-  year: '',
-  month: '',
-  logType: '',
+  year: null,
+  month: null,
+  logType: ''
 })
 
-const logForm = reactive({
-  date: '',
-  type: '',
-  content: '',
-  hours: 8,
-})
-
-const logs = ref([
-  { id: 1, date: '2025-03-15', project: '项目A', content: '完成用户认证模块', hours: 8, type: '1'},
-  { id: 2, date: '2025-03-14', project: '项目B', content: '优化数据库查询性能', hours: 6, type: '2'},
-  { id: 3, date: '2025-03-13', project: '项目C', content: '设计新功能原型', hours: 7, type: '1'},
-  { id: 4, date: '2025-03-12', project: '项目A', content: '修复登录页面bug', hours: 4, type: '1'},
-  { id: 5, date: '2025-03-11', project: '项目B', content: '实现数据导出功能', hours: 5, type: '3'},
-])
-
+// 分页相关
 const currentPage = ref(1)
 const pageSize = ref(5)
-const total = computed(() => filteredLogs.value.length)
-const searchKeyword = ref('')
-const addLogDialogVisible = ref(false)
+const logList = ref<WorkLogData[]>([])
+const total = computed(() => logList.value.length)
 
+// 日志表单
+const logFormRef = ref<FormInstance>()
+const logForm = reactive<WorkLogData>({
+  logDate: '',
+  type: 1,
+  content: ''
+})
+
+// 查看日志详情
+const detailLog = reactive<WorkLogData>({
+  logDate: '',
+  type: 1,
+  typeText: '',
+  content: '',
+  logDateStr: ''
+})
+
+// 统计数据
+const statistics = ref({
+  submittedLogs: 0,
+  requiredLogs: 0,
+  percentage: 0
+})
+
+// 对话框控制
+const logDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const isEditing = ref(false)
+
+// 表单验证规则
+const logRules: FormRules = {
+  logDate: [
+    { required: true, message: '请选择日期', trigger: 'change' }
+  ],
+  type: [
+    { required: true, message: '请选择日志类型', trigger: 'change' }
+  ],
+  content: [
+    { required: true, message: '请输入日志内容', trigger: 'blur' }
+  ]
+}
+
+// 计算分页后的日志列表
 const paginatedLogs = computed(() => {
   const startIndex = (currentPage.value - 1) * pageSize.value
   const endIndex = startIndex + pageSize.value
-  return filteredLogs.value.slice(startIndex, endIndex)
+  return logList.value.slice(startIndex, endIndex)
 })
 
+// 处理分页大小变化
 const handleSizeChange = (val: number) => {
   pageSize.value = val
   currentPage.value = 1
 }
 
+// 处理当前页变化
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
 }
 
-const filteredLogs = computed(() => {
-  return logs.value.filter((log) => {
-    const matchesKeyword =
-        log.content.toLowerCase().includes(searchKeyword.value.toLowerCase()) ||
-        log.project.toLowerCase().includes(searchKeyword.value.toLowerCase())
-    const matchesDateRange =
-        queryForm.dateRange.length === 0 ||
-        (new Date(log.date) >= queryForm.dateRange[0] &&
-            new Date(log.date) <= queryForm.dateRange[1])
-    const matchesYear =
-        !queryForm.year ||
-        new Date(log.date).getFullYear() === new Date(queryForm.year).getFullYear()
-    const matchesMonth =
-        !queryForm.month ||
-        new Date(log.date).getMonth() === new Date(queryForm.month).getMonth()
-    const matchesLogType = !queryForm.logType || log.type === queryForm.logType
-    return matchesKeyword && matchesDateRange && matchesYear && matchesMonth && matchesLogType
-  })
-})
-
-const monthProgress = computed(() => {
-  const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  return Math.round((now.getDate() / daysInMonth) * 100)
-})
-
-const submittedLogs = computed(() => {
-  const now = new Date()
-  return logs.value.filter((log) => {
-    const logDate = new Date(log.date)
-    return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear()
-  }).length
-})
-
-const requiredLogs = computed(() => {
-  const now = new Date()
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  return daysInMonth // 假设每天需要一条日志
-})
-
-const handleReset = () => {
-  queryForm.dateRange = []
-  queryForm.year = ''
-  queryForm.month = ''
-  queryForm.logType = ''
-  searchKeyword.value = ''
-  ElMessage.success('查询条件已重置')
+// 搜索日志
+const handleSearch = async () => {
+  await fetchLogs()
 }
 
+// 重置查询条件
+const handleReset = () => {
+  queryForm.dateRange = []
+  queryForm.year = null
+  queryForm.month = null
+  queryForm.logType = ''
+  fetchLogs()
+}
+
+// 进度条格式化
 const progressFormat = (percentage: number) => {
   return `${percentage}%`
 }
 
-const submitLog = () => {
-  ElMessage.success('日志提交成功')
-  addLogDialogVisible.value = false
-  Object.assign(logForm, { date: '', project: '', content: '', hours: 8 })
-  // 在实际应用中，这里应该调用API来保存日志
-}
-
-const editLog = (log) => {
-  ElMessage.info(`编辑日志：${log.date}`)
-  // 在实际应用中，这里应该打开一个编辑对话框或跳转到编辑页面
-}
-
-const deleteLog = (log) => {
-  ElMessageBox.confirm(`确定要删除 ${log.date} 的日志吗？`, '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
-      .then(() => {
-        ElMessage.success('日志删除成功')
-        // 在实际应用中，这里应该调用API来删除日志，然后刷新日志列表
-      })
-      .catch(() => {
-        // 取消删除操作
-      })
-}
-
-const getTimelineItemType = (project: string) => {
-  const types = {
-    项目A: 'primary',
-    项目B: 'success',
-    项目C: 'warning',
-  }
-  return types[project] || 'info'
-}
-
+// 打开添加日志对话框
 const openAddLogDialog = () => {
-  addLogDialogVisible.value = true
+  isEditing.value = false
+  resetLogForm()
+  // 默认使用当前日期
+  logForm.logDate = formatDateToString(new Date())
+  logDialogVisible.value = true
 }
 
-// 监听查询条件变化，自动更新筛选结果
-watch([() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, () => queryForm.logType], () => {
-  currentPage.value = 1 // 重置页码
+// 提交日志
+const submitLog = async () => {
+  if (!logFormRef.value) return
+
+  await logFormRef.value.validate(async (valid) => {
+    if (valid) {
+      let success = false
+
+      // 确保日期格式正确
+      if (logForm.logDate instanceof Date) {
+        logForm.logDate = formatDateToString(logForm.logDate)
+      }
+
+      if (isEditing.value && logForm.id) {
+        // 编辑现有日志
+        success = await workLogStore.updateWorkLogAction(logForm)
+      } else {
+        // 添加新日志
+        success = await workLogStore.createWorkLogAction(logForm)
+      }
+
+      if (success) {
+        logDialogVisible.value = false
+        resetLogForm()
+        await fetchLogs()
+        await fetchStatistics()
+      }
+    }
+  })
+}
+
+// 编辑日志
+const editLog = (log: WorkLogData) => {
+  isEditing.value = true
+  logForm.id = log.id
+  logForm.logDate = log.logDate
+  logForm.type = log.type
+  logForm.content = log.content
+  logDialogVisible.value = true
+}
+
+// 查看日志详情
+const viewLog = async (log: WorkLogData) => {
+  if (log.id) {
+    const detail = await workLogStore.getWorkLogDetailAction(log.id)
+    if (detail) {
+      detailLog.id = detail.id
+      detailLog.logDate = detail.logDate
+      detailLog.type = detail.type
+      detailLog.typeText = detail.typeText
+      detailLog.content = detail.content
+      detailLog.logDateStr = detail.logDateStr
+      detailDialogVisible.value = true
+    }
+  } else {
+    // 本地数据，直接显示
+    Object.assign(detailLog, log)
+    detailDialogVisible.value = true
+  }
+}
+
+// 获取时间线项目类型
+const getTimelineItemType = (index: number): string => {
+  const types = ['primary', 'success', 'warning', 'info', 'danger'];
+  return types[index % types.length];
+}
+
+// 获取日志类型标签类型
+const getLogTypeTag = (type: number | string): string => {
+  const typeMap: Record<string, string> = {
+    1: 'primary',
+    2: 'success',
+    3: 'danger'
+  }
+
+  return typeMap[type as string] || 'info'
+}
+
+// 重置日志表单
+const resetLogForm = () => {
+  logForm.id = undefined
+  logForm.logDate = ''
+  logForm.type = 1
+  logForm.content = ''
+  isEditing.value = false
+}
+
+// 截断HTML内容
+const truncateHtml = (html: string, maxLength = 150) => {
+  if (!html) return ''
+
+  // 创建临时DOM元素来解析HTML
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = html
+
+  // 获取纯文本内容
+  const textContent = tempDiv.textContent || tempDiv.innerText || ''
+
+  if (textContent.length <= maxLength) {
+    return html
+  }
+
+  // 如果超出最大长度，返回部分内容
+  return html
+}
+
+// 格式化日期为字符串
+const formatDateToString = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 获取日志列表
+const fetchLogs = async () => {
+  const logs = await workLogStore.getWorkLogListAction(queryForm)
+  logList.value = logs
+}
+
+// 获取统计数据
+const fetchStatistics = async () => {
+  const stats = await workLogStore.getMonthlyStatisticsAction()
+  if (stats) {
+    statistics.value = stats
+  }
+}
+
+// 监听查询条件变化
+watch(
+    [() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, () => queryForm.logType, () => queryForm.keyword],
+    () => {
+      currentPage.value = 1 // 重置页码
+    }
+)
+
+// 组件挂载时获取数据
+onMounted(async () => {
+  await fetchLogs()
+  await fetchStatistics()
 })
 </script>
 
 <style scoped>
 .work-log-container {
-  padding: 15px;
+  padding: 0 15px;
 }
 
 .query-card,
 .dashboard-card {
   border-radius: 12px;
-  height: calc(42vh);
+  height: calc(41.96vh);
   margin-bottom: 10px;
   overflow-y: auto;
   transition: all 0.3s ease;
 }
 
-.query-card {
-  margin-bottom: 10px;
-}
-
 .log-list-card {
   border-radius: 12px;
-  height: 85vh;
+  height: 84.96vh;
   transition: all 0.3s ease;
   overflow-y: auto;
 }
@@ -362,15 +509,14 @@ watch([() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, (
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 20px;
+  gap: 5px;
 }
 
 .statistics {
   display: flex;
   justify-content: space-around;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .stat-item {
@@ -399,16 +545,160 @@ watch([() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, (
   margin-bottom: 10px;
 }
 
-.log-item-footer {
+.log-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-bottom: 10px;
+}
+
+.log-date {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.log-content-preview {
+  margin-bottom: 15px;
+  max-height: 100px;
+  min-height: 100px;
+  overflow: hidden;
+  position: relative;
+}
+
+.log-content-preview::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+}
+
+.log-item-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
   margin-top: 10px;
+}
+
+.log-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .pagination-container {
   display: flex;
   justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.empty-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+/* 工作日志详情样式 */
+.log-detail-content {
+  padding: 20px;
+}
+
+.log-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.log-detail-date {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.log-detail-divider {
+  height: 1px;
+  background-color: #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.log-detail-body {
+  min-height: 350px;
+  max-height: 350px;
+  padding: 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  overflow-y: auto;
+}
+
+/* 编辑器样式 */
+:deep(.log-editor) {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+:deep(.log-editor .ql-container) {
+  flex: 1;
+  overflow-y: auto;
+}
+
+:deep(.log-editor .ql-toolbar) {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+:deep(.log-editor .ql-container) {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* 富文本内容样式 */
+.log-content-preview :deep(p),
+.log-detail-body :deep(p) {
+  margin: 8px 0;
+}
+
+.log-content-preview :deep(img),
+.log-detail-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.log-content-preview :deep(ul),
+.log-content-preview :deep(ol),
+.log-detail-body :deep(ul),
+.log-detail-body :deep(ol) {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.log-content-preview :deep(pre),
+.log-detail-body :deep(pre) {
+  background-color: #f6f6f6;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+
+.log-content-preview :deep(blockquote),
+.log-detail-body :deep(blockquote) {
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 8px 0;
+  color: #666;
+}
+
+:deep(.custom-progress) .el-progress-circle__track {
+  stroke: #d9dadc !important;
+}
+
+/* 确保在暗色主题下也有适当的灰色背景 */
+:deep(.dark) .custom-progress .el-progress-circle__track {
+  stroke: #4a4a4a !important;
 }
 
 /* 响应式调整 */
@@ -447,43 +737,14 @@ watch([() => queryForm.dateRange, () => queryForm.year, () => queryForm.month, (
     color: #e5e7eb;
   }
 
-  :deep(.el-timeline-item__node) {
-    background-color: #409eff;
+  .log-content-preview::after {
+    background: linear-gradient(to bottom, rgba(45, 45, 45, 0), rgba(45, 45, 45, 1));
   }
 
-  :deep(.el-timeline-item__tail) {
-    border-left-color: #4a4a4a;
-  }
-
-  :deep(.el-button) {
-    background-color: #4a4a4a;
+  .log-detail-body {
+    background-color: #1c1c1c;
     border-color: #4a4a4a;
     color: #e5e7eb;
-  }
-
-  :deep(.el-button--primary) {
-    background-color: #409eff;
-    border-color: #409eff;
-    color: #ffffff;
-  }
-
-  :deep(.el-button--danger) {
-    background-color: #f56c6c;
-    border-color: #f56c6c;
-    color: #ffffff;
-  }
-
-  :deep(.el-pagination) {
-    --el-text-color-regular: #e5e7eb;
-  }
-
-  :deep(.el-select-dropdown__item) {
-    color: #e5e7eb;
-  }
-
-  :deep(.el-select-dropdown__item.hover),
-  :deep(.el-select-dropdown__item:hover) {
-    background-color: #1c1c1c;
   }
 }
 </style>
