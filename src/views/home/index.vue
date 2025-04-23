@@ -89,9 +89,7 @@
                 <div v-if="memos.length > 0"v-for="memo in memos" :key="memo.id" class="list-item">
                   <div class="item-header">
                     <h4>{{ memo.title }}</h4>
-                    <el-button type="text" @click="viewFullMemo(memo)">
-                      <el-icon><View /></el-icon>
-                    </el-button>
+                    <el-button type="text" icon="view" @click="viewFullMemo(memo)"></el-button>
                   </div>
                   <div class="item-content">
                     <p class="memo-content">{{ truncateContent(memo.content) }}</p>
@@ -120,9 +118,7 @@
                 <div v-else class="list-item">
                   <div class="item-header">
                     <el-tag size="small" :type="getLogTypeTag(todayLog.type)">{{ todayLog.typeText }}</el-tag>
-                    <el-button type="text" @click="editTodayLog">
-                      <el-icon><Edit /></el-icon>
-                    </el-button>
+                    <el-button type="text" icon="edit" @click="editTodayLog"></el-button>
                   </div>
                   <div class="item-content">
                     <div class="memo-content log-content" v-html="todayLog.content"></div>
@@ -189,13 +185,19 @@
   </el-dialog>
 
   <!-- 查看完整备忘对话框 -->
-  <el-dialog v-model="viewMemoDialogVisible" :title="selectedMemo.title" width="500px">
-    <div class="memo-detail-content">
-      <p>{{ selectedMemo.content }}</p>
-      <div class="memo-detail-footer">
-        <span>日期: {{ formatDate(selectedMemo.memoDate) }}</span>
-        <span>创建时间: {{ formatDateTime(selectedMemo.createTime) }}</span>
-      </div>
+  <el-dialog
+      v-model="viewMemoDialogVisible"
+      title="备忘详情"
+      width="800px"
+      destroy-on-close
+      :modal-append-to-body="false"
+      class="custom-dialog"
+      center
+  >
+    <div class="detail-content">
+      <p class="detail-date"><strong>日期：</strong>{{ selectedMemo.memoDate }}</p>
+      <div class="detail-text"><strong>内容：</strong></div>
+      <div class="detail-html-content" v-html="selectedMemo.content"></div>
     </div>
     <template #footer>
       <span class="dialog-footer">
@@ -668,22 +670,50 @@ onMounted(async () => {
 .log-content {
   max-height: 150px;
   overflow-y: auto;
-  padding: 8px;
+  padding: 8px 15px;
   background-color: #f8f9fa;
   border-radius: 4px;
 }
 
 /* 备忘详情样式 */
-.memo-detail-content {
-  padding: 20px;
+.detail-content {
+  padding: 0 20px;
 }
 
-.memo-detail-footer {
-  margin-top: 20px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #909399;
+.detail-content h4 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  color: #303133;
+}
+
+.detail-date {
+  margin-bottom: 12px;
+  color: #606266;
+}
+
+.detail-text {
+  color: #606266;
+  margin-bottom: 10px;
+}
+
+.detail-html-content {
+  color: #606266;
+  line-height: 1.6;
+  max-height: 350px;
+  overflow-y: auto;
+  padding: 15px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background-color: #f8f8f8;
+}
+
+.detail-html-content :deep(p) {
+  margin: 8px 0;
+}
+
+.detail-html-content :deep(img) {
+  max-width: 100%;
+  height: auto;
 }
 
 /* 白色背景输入框 */
