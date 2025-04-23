@@ -104,6 +104,22 @@ export const getSubTasks = (taskId: string) => {
     })
 }
 
+// 获取当前用户的任务列表
+export const getCurrentUserTasks = () => {
+    return request({
+        url: `/api/task/current_user`,
+        method: 'get'
+    })
+}
+
+// 获取未完成任务数量
+export const getUnfinishedTasksCount = () => {
+    return request({
+        url: `/api/task/unfinished_count`,
+        method: 'get'
+    })
+}
+
 // 获取关联问题
 export const getRelatedIssues = (id: string) => {
     return request({

@@ -6,7 +6,8 @@ import {
     getWorkLogDetail,
     createWorkLog,
     updateWorkLog,
-    getMonthlyStatistics
+    getMonthlyStatistics,
+    getTodayLog
 } from '@/api/workLog'
 import type { WorkLogData, WorkLogStatistics, WorkLogQuery } from '@/types/workLog'
 
@@ -18,6 +19,27 @@ export const useWorkLogStore = defineStore('workLog', () => {
         percentage: 0
     })
     const loading = ref(false)
+    const todayLog = ref(null)
+
+    // 获取今日工作日志
+    const getTodayLogAction = async () => {
+        loading.value = true
+        try {
+            const res = await getTodayLog()
+            const { success, data } = res.data
+            if (success) {
+                return data
+            } else {
+                ElMessage.error(res.data.message)
+                return null
+            }
+        } catch (error) {
+            console.error('获取今日工作日志失败:', error)
+            return null
+        } finally {
+            loading.value = false
+        }
+    }
 
     // 获取工作日志列表
     const getWorkLogListAction = async (query: WorkLogQuery) => {
@@ -149,6 +171,7 @@ export const useWorkLogStore = defineStore('workLog', () => {
         logList,
         statistics,
         loading,
+        getTodayLogAction,
         getWorkLogListAction,
         getWorkLogDetailAction,
         createWorkLogAction,

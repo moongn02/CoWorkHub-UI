@@ -5,7 +5,7 @@
         <!-- 顶部统计卡片 -->
         <el-row :gutter="20" class="stats-row">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6" v-for="stat in dashboardStats" :key="stat.label">
-            <el-card class="stats-card" shadow="hover">
+            <el-card class="stats-card" shadow="hover" v-loading="loading">
               <div class="stat-content">
                 <el-icon :size="24" :color="stat.color"><component :is="stat.icon" /></el-icon>
                 <div class="stat-info">
@@ -25,23 +25,23 @@
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">任务单</h3>
-                  <el-button type="primary" link>查看更多</el-button>
                 </div>
               </template>
-              <div class="scrollable-content">
-                <div v-for="task in tasks" :key="task.id" class="list-item">
+              <div class="scrollable-content" v-loading="taskLoading">
+                <div v-if="tasks.length > 0" v-for="task in tasks" :key="task.id" class="list-item" @click="viewTask(task.id)">
                   <div class="item-header">
                     <el-tag size="small" type="primary">{{ task.id }}</el-tag>
-                    <el-tag size="small" :type="getStatusType(task.status)">{{ task.status }}</el-tag>
+                    <el-tag size="small" :type="getTaskStatusType(task.status)">{{ task.statusText }}</el-tag>
                   </div>
                   <div class="item-content">
-                    <h4><a :href="task.url" target="_blank">{{ task.title }}</a></h4>
+                    <h4>{{ task.title }}</h4>
                     <p class="item-info">
-                      <span>执行人: {{ task.executor }}</span>
-                      <span>期望完成时间: {{ task.expectedDate }}</span>
+                      <span>执行人: {{ task.handlerName || '未分配' }}</span>
+                      <span>期望完成: {{ formatDate(task.expectedTime) }}</span>
                     </p>
                   </div>
                 </div>
+                <el-empty v-else :image-size="80" description="暂无任务" />
               </div>
             </el-card>
           </el-col>
@@ -52,23 +52,23 @@
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">问题单</h3>
-                  <el-button type="primary" link>查看更多</el-button>
                 </div>
               </template>
-              <div class="scrollable-content">
-                <div v-for="issue in issues" :key="issue.id" class="list-item">
+              <div class="scrollable-content" v-loading="issueLoading">
+                <div v-if = "issues.length > 0" v-for="issue in issues" :key="issue.id" class="list-item" @click="viewIssue(issue.id)">
                   <div class="item-header">
                     <el-tag size="small" type="warning">{{ issue.id }}</el-tag>
-                    <el-tag size="small" :type="getStatusType(issue.status)">{{ issue.status }}</el-tag>
+                    <el-tag size="small" :type="getIssueStatusType(issue.status)">{{ issue.statusText }}</el-tag>
                   </div>
                   <div class="item-content">
-                    <h4><a :href="issue.url" target="_blank">{{ issue.title }}</a></h4>
+                    <h4>{{ issue.title }}</h4>
                     <p class="item-info">
-                      <span>执行人: {{ issue.executor }}</span>
-                      <span>期望完成时间: {{ issue.expectedDate }}</span>
+                      <span>处理人: {{ issue.handlerName || '未分配' }}</span>
+                      <span>期望完成: {{ formatDate(issue.expectedTime) }}</span>
                     </p>
                   </div>
                 </div>
+                <el-empty v-else :image-size="80" description="暂无问题" />
               </div>
             </el-card>
           </el-col>
@@ -82,12 +82,11 @@
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">工作备忘</h3>
-                  <el-button type="primary" link>添加备忘</el-button>
                 </div>
               </template>
-              <div class="scrollable-content">
-                <el-empty v-if="!memos.length" :image-size="80" description="暂无备忘" />
-                <div v-else v-for="memo in memos" :key="memo.id" class="list-item">
+              <div class="scrollable-content" v-loading="memoLoading">
+
+                <div v-if="memos.length > 0"v-for="memo in memos" :key="memo.id" class="list-item">
                   <div class="item-header">
                     <h4>{{ memo.title }}</h4>
                     <el-button type="text" @click="viewFullMemo(memo)">
@@ -95,13 +94,13 @@
                     </el-button>
                   </div>
                   <div class="item-content">
-                    <p class="memo-content">{{ memo.content }}</p>
-<!--                     truncateContent(memo.content)-->
+                    <p class="memo-content">{{ truncateContent(memo.content) }}</p>
                     <p class="item-info">
-                      <span>记录时间: {{ memo.createTime }}</span>
+                      <span>记录时间: {{ memo.memoDate }}</span>
                     </p>
                   </div>
                 </div>
+                <el-empty v-else :image-size="80" description="暂无备忘" />
               </div>
             </el-card>
           </el-col>
@@ -112,20 +111,24 @@
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">今日工作日志</h3>
-                  <el-button type="primary" link @click="openAddLogDialog">添加日志</el-button>
                 </div>
               </template>
-              <div class="scrollable-content">
+              <div class="scrollable-content" v-loading="logLoading">
                 <el-empty v-if="!todayLog" :image-size="80" description="今日日志尚未填写">
                   <el-button type="primary" @click="openAddLogDialog">立即填写</el-button>
                 </el-empty>
                 <div v-else class="list-item">
+                  <div class="item-header">
+                    <el-tag size="small" :type="getLogTypeTag(todayLog.type)">{{ todayLog.typeText }}</el-tag>
+                    <el-button type="text" @click="editTodayLog">
+                      <el-icon><Edit /></el-icon>
+                    </el-button>
+                  </div>
                   <div class="item-content">
-                    <h4>{{ todayLog.title }}</h4>
-                    <p class="memo-content">{{ todayLog.content }}</p>
+                    <div class="memo-content log-content" v-html="todayLog.content"></div>
                     <p class="item-info">
-                      <span>记录时间: {{ todayLog.createTime }}</span>
-                      <span>工时: {{ todayLog.hours }}h</span>
+                      <span>日期: {{ todayLog.logDateStr }}</span>
+                      <span>创建: {{ formatDateTime(todayLog.createTime) }}</span>
                     </p>
                   </div>
                 </div>
@@ -137,61 +140,63 @@
     </template>
   </Layout>
 
-  <!-- 添加工作日志对话框 -->
-  <el-dialog v-model="addLogDialogVisible" title="添加工作日志" width="30%">
-    <el-form :model="logForm" @submit.prevent="submitLog">
-      <el-form-item label="日期" required>
+  <!-- 工作日志对话框 -->
+  <el-dialog
+      v-model="logDialogVisible"
+      :title="isEditing ? '编辑工作日志' : '添加工作日志'"
+      width="800px"
+      destroy-on-close
+  >
+    <el-form :model="logForm" :rules="logRules" ref="logFormRef" label-width="80px">
+      <el-form-item label="日期" prop="logDate">
         <el-date-picker
-            v-model="logForm.date"
+            v-model="logForm.logDate"
             type="date"
             placeholder="选择日期"
             class="white-bg-input"
             style="width: 50%"
         />
       </el-form-item>
-      <el-form-item label="类型" required>
+      <el-form-item label="类型" prop="type">
         <el-select
             v-model="logForm.type"
             placeholder="请选择日志类型"
             class="white-bg-input"
             style="width: 50%"
         >
-          <el-option label="日志" value="1" />
-          <el-option label="周志" value="2" />
-          <el-option label="月志" value="3" />
+          <el-option label="日志" :value="1" />
+          <el-option label="周志" :value="2" />
+          <el-option label="月志" :value="3" />
         </el-select>
       </el-form-item>
-      <el-form-item label="工作内容" required>
-        <el-input
-            v-model="logForm.content"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入今日工作内容"
-            class="white-bg-input"
-        />
-      </el-form-item>
-      <el-form-item label="工时" required>
-        <el-input-number
-            v-model="logForm.hours"
-            :min="0.5"
-            :max="24"
-            :step="0.5"
-            class="white-bg-input"
-            style="width: 50%"
+      <el-form-item label="内容" prop="content">
+        <quill-editor
+            v-model:content="logForm.content"
+            contentType="html"
+            theme="snow"
+            toolbar="full"
+            style="height: 300px; width: 100%;"
+            class="log-editor"
         />
       </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="addLogDialogVisible = false">取消</el-button>
+        <el-button @click="logDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitLog">确定</el-button>
       </span>
     </template>
   </el-dialog>
 
   <!-- 查看完整备忘对话框 -->
-  <el-dialog v-model="viewMemoDialogVisible" :title="selectedMemo.title" width="30%">
-    <p>{{ selectedMemo.content }}</p>
+  <el-dialog v-model="viewMemoDialogVisible" :title="selectedMemo.title" width="500px">
+    <div class="memo-detail-content">
+      <p>{{ selectedMemo.content }}</p>
+      <div class="memo-detail-footer">
+        <span>日期: {{ formatDate(selectedMemo.memoDate) }}</span>
+        <span>创建时间: {{ formatDateTime(selectedMemo.createTime) }}</span>
+      </div>
+    </div>
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="viewMemoDialogVisible = false">关闭</el-button>
@@ -201,183 +206,314 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted} from 'vue'
 import Layout from "@/components/Layout.vue"
-import { Files, Warning, Calendar, Check, View } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { Files, Warning, Calendar, Check, View, Edit } from '@element-plus/icons-vue'
+import { useTaskStore } from '@/stores/task'
+import { useIssueStore } from '@/stores/issue'
+import { useWorkLogStore } from '@/stores/workLog'
+import { useWorkMemoStore } from '@/stores/workMemo'
+import { useDashboardStore } from '@/stores/dashboard'
+import { ElMessage } from 'element-plus'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import router from "@/router";
 
-// 定义接口类型
-interface Task {
-  id: string
-  title: string
-  status: string
-  executor: string
-  expectedDate: string
-  url: string
-}
+// 初始化store
+const taskStore = useTaskStore()
+const issueStore = useIssueStore()
+const workLogStore = useWorkLogStore()
+const workMemoStore = useWorkMemoStore()
+const dashboardStore = useDashboardStore()
 
-interface Issue {
-  id: string
-  title: string
-  status: string
-  executor: string
-  expectedDate: string
-  url: string
-}
-
-interface Memo {
-  id: string
-  title: string
-  content: string
-  createTime: string
-}
-
-interface Log {
-  id: string
-  title: string
-  content: string
-  createTime: string
-  hours: number
-}
+// 加载状态
+const loading = ref(false)
+const taskLoading = ref(false)
+const issueLoading = ref(false)
+const memoLoading = ref(false)
+const logLoading = ref(false)
 
 // 仪表盘统计数据
 const dashboardStats = ref([
   { label: '未完成任务', value: '0', icon: Files, color: '#409EFF' },
   { label: '未解决问题', value: '0', icon: Warning, color: '#E6A23C' },
-  { label: '今日工作', value: '0h', icon: Calendar, color: '#67C23A' },
-  { label: '本周工作', value: '0h', icon: Check, color: '#909399' },
+  { label: '今日工时', value: '0h', icon: Calendar, color: '#67C23A' },
+  { label: '今日日志', value: '0', icon: Check, color: '#c2cd61' },
 ])
 
 // 列表数据
-const tasks = ref<Task[]>([])
-const issues = ref<Issue[]>([])
-const memos = ref<Memo[]>([])
-const todayLog = ref<Log | null>(null)
+const tasks = ref([])
+const issues = ref([])
+const memos = ref([])
+const todayLog = ref(null)
 
 // 对话框控制
-const addLogDialogVisible = ref(false)
+const logDialogVisible = ref(false)
+const isEditing = ref(false)
 const viewMemoDialogVisible = ref(false)
-const selectedMemo = ref<Memo>({ id: '', title: '', content: '', createTime: '' })
-
-// 日志表单
-const logForm = ref({
-  date: new Date(),
-  type: '1',
+const selectedMemo = ref({
+  id: '',
+  title: '',
   content: '',
-  hours: 8,
+  memoDate: null,
+  createTime: null
 })
 
+// 日志表单
+const logFormRef = ref(null)
+const logForm = reactive({
+  id: null,
+  logDate: new Date(),
+  type: 1,
+  content: ''
+})
+
+// 表单校验规则
+const logRules = {
+  logDate: [
+    { required: true, message: '请选择日期', trigger: 'change' }
+  ],
+  type: [
+    { required: true, message: '请选择日志类型', trigger: 'change' }
+  ],
+  content: [
+    { required: true, message: '请输入日志内容', trigger: 'blur' }
+  ]
+}
+
 // 获取仪表盘数据
-const fetchDashboardData = async () => {
+const fetchDashboardStats = async () => {
+  loading.value = true
   try {
-    const response = await axios.get('/api/dashboard/stats')
-    const data = response.data
-    dashboardStats.value[0].value = data.unfinishedTasks
-    dashboardStats.value[1].value = data.unresolvedIssues
-    dashboardStats.value[2].value = `${data.todayHours}h`
-    dashboardStats.value[3].value = `${data.weekHours}h`
+    const stats = await dashboardStore.getDashboardStatsAction()
+
+    // 更新仪表盘卡片数据
+    dashboardStats.value[0].value = stats.unfinishedTasks.toString()
+    dashboardStats.value[1].value = stats.unresolvedIssues.toString()
+    dashboardStats.value[2].value = `${stats.todayHours}h`
+    dashboardStats.value[3].value = getHasTodayLogText(stats.hasTodayLog)
   } catch (error) {
-    console.error('获取仪表盘数据失败:', error)
+    ElMessage.error('获取仪表盘数据失败')
+  } finally {
+    loading.value = false
   }
 }
 
 // 获取任务列表
 const fetchTasks = async () => {
+  taskLoading.value = true
   try {
-    const response = await axios.get('/api/tasks')
-    tasks.value = response.data
+    tasks.value = await taskStore.getCurrentUserTasksAction()
   } catch (error) {
-    console.error('获取任务列表失败:', error)
+    ElMessage.error('获取任务列表失败')
+  } finally {
+    taskLoading.value = false
   }
 }
 
 // 获取问题列表
 const fetchIssues = async () => {
+  issueLoading.value = true
   try {
-    const response = await axios.get('/api/issues')
-    issues.value = response.data
+    issues.value = await issueStore.getCurrentUserIssuesAction()
   } catch (error) {
-    console.error('获取问题列表失败:', error)
+    ElMessage.error('获取问题列表失败')
+  } finally {
+    issueLoading.value = false
   }
 }
 
 // 获取工作备忘
 const fetchMemos = async () => {
+  memoLoading.value = true
   try {
-    const response = await axios.get('/api/memos')
-    memos.value = response.data
+    memos.value = await workMemoStore.getWorkMemoListAction()
   } catch (error) {
-    console.error('获取工作备忘失败:', error)
+    ElMessage.error('获取工作备忘失败')
+  } finally {
+    memoLoading.value = false
   }
 }
 
 // 获取今日工作日志
 const fetchTodayLog = async () => {
+  logLoading.value = true
   try {
-    const response = await axios.get('/api/logs/today')
-    todayLog.value = response.data
+    todayLog.value = await workLogStore.getTodayLogAction()
   } catch (error) {
-    console.error('获取今日工作日志失败:', error)
+    ElMessage.error('获取今日工作日志失败')
+  } finally {
+    logLoading.value = false
   }
 }
 
-// 状态类型映射
-const getStatusType = (status: string) => {
-  const types = {
-    '已过期': 'danger',
-    '进行中': 'primary',
-    '待处理': 'warning',
-    '已完成': 'success',
-    '待解决': 'warning',
-    '已处理': 'success',
-    '处理中': 'primary',
-    '待验证': 'info'
+// 获取任务状态类型
+const getTaskStatusType = (status: number) => {
+  const typeMap = {
+    1: 'info',
+    2: 'primary',
+    3: 'success',
+    4: 'warning',
+    5: 'danger',
   }
-  return types[status] || 'info'
+  return typeMap[status] || 'info'
 }
 
-// // 截断内容
-// const truncateContent = (content: string, length = 50) => {
-//   return content.length > length ? content.slice(0, length) + '...' : content
-// }
+// 获取问题状态类型
+const getIssueStatusType = (status) => {
+  const typeMap = {
+    1: 'info',     // 已分派
+    2: 'primary',  // 处理中
+    3: 'success',  // 已解决
+    4: 'warning',  // 已暂停
+    5: 'danger'    // 已关闭
+  }
+  return typeMap[status] || 'info'
+}
+
+// 获取日志类型标签类型
+const getLogTypeTag = (type: number | string): string => {
+  const typeMap: Record<string, string> = {
+    1: 'primary',
+    2: 'success',
+    3: 'danger'
+  }
+
+  return typeMap[type as string] || 'info'
+}
+
+
+// 获取是否有今日日志文本
+const getHasTodayLogText = (type: number | string): string => {
+  const typeMap: Record<string, string> = {
+    true: '已填写',
+    false: '未填写'
+  }
+
+  return typeMap[type as string] || 'info'
+}
+
+// 截断内容
+const truncateContent = (content: string, length = 80) => {
+  if (!content) return ''
+
+  // 创建临时DOM元素来去除HTML标签
+  const tempDiv = document.createElement('div')
+  tempDiv.innerHTML = content
+  const textContent = tempDiv.textContent || tempDiv.innerText || ''
+
+  return textContent.length > length
+      ? textContent.slice(0, length) + '...'
+      : textContent
+}
 
 // 查看完整备忘
-const viewFullMemo = (memo: Memo) => {
+const viewFullMemo = (memo) => {
   selectedMemo.value = memo
   viewMemoDialogVisible.value = true
 }
 
 // 打开添加日志对话框
 const openAddLogDialog = () => {
-  addLogDialogVisible.value = true
+  isEditing.value = false
+  logForm.id = null
+  logForm.logDate = new Date()
+  logForm.type = 1
+  logForm.content = ''
+  logDialogVisible.value = true
+}
+
+// 编辑今日日志
+const editTodayLog = () => {
+  if (!todayLog.value) return
+
+  isEditing.value = true
+  logForm.id = todayLog.value.id
+  logForm.logDate = new Date(todayLog.value.logDate)
+  logForm.type = todayLog.value.type
+  logForm.content = todayLog.value.content
+  logDialogVisible.value = true
 }
 
 // 提交日志
 const submitLog = async () => {
-  try {
-    await axios.post('/api/logs', logForm.value)
-    addLogDialogVisible.value = false
-    await fetchTodayLog()
-    // 重置表单
-    logForm.value = {
-      date: new Date(),
-      type: '1',
-      content: '',
-      hours: 8,
+  if (!logFormRef.value) return
+
+  await logFormRef.value.validate(async (valid) => {
+    if (valid) {
+      try {
+        if (isEditing.value && logForm.id) {
+          await workLogStore.updateWorkLogAction(logForm)
+        } else {
+          await workLogStore.createWorkLogAction(logForm)
+        }
+
+        logDialogVisible.value = false
+        await fetchTodayLog()
+        // 更新仪表盘统计
+        await fetchDashboardStats()
+      } catch (error) {
+        ElMessage.error('提交日志失败')
+      }
     }
-  } catch (error) {
-    console.error('提交日志失败:', error)
+  })
+}
+
+// 查看任务详情
+const viewTask = (taskId) => {
+  if (taskId === 0) return
+  router.push(`/task/${taskId}`)
+}
+
+// 查看问题详情
+const viewIssue = (issueId) => {
+  if (issueId === 0) return
+  router.push(`/issue/${issueId}`)
+}
+
+// 格式化日期
+const formatDate = (date) => {
+  if (!date) return '未设置'
+
+  if (typeof date === 'string') {
+    // 如果是ISO格式的字符串，转换为Date对象
+    date = new Date(date)
   }
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return '未设置'
+
+  if (typeof dateTime === 'string') {
+    // 如果是ISO格式的字符串，转换为Date对象
+    dateTime = new Date(dateTime)
+  }
+
+  const year = dateTime.getFullYear()
+  const month = String(dateTime.getMonth() + 1).padStart(2, '0')
+  const day = String(dateTime.getDate()).padStart(2, '0')
+  const hours = String(dateTime.getHours()).padStart(2, '0')
+  const minutes = String(dateTime.getMinutes()).padStart(2, '0')
+
+  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
 // 页面加载时获取数据
 onMounted(async () => {
+  // 并行加载所有数据
   await Promise.all([
-    fetchDashboardData(),
     fetchTasks(),
     fetchIssues(),
     fetchMemos(),
-    fetchTodayLog()
+    fetchTodayLog(),
+    fetchDashboardStats()
   ])
 })
 </script>
@@ -445,12 +581,7 @@ onMounted(async () => {
   transition: all 0.3s ease;
 }
 
-.list-card-1:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.list-card-2:hover {
+.list-card-1:hover, .list-card-2:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -465,12 +596,12 @@ onMounted(async () => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #303133;
+  color: #000000;
 }
 
 /* 滚动内容区域样式 */
 .scrollable-content {
-  max-height: 330px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
@@ -506,12 +637,12 @@ onMounted(async () => {
 .item-content h4 {
   margin: 0 0 8px 0;
   font-size: 14px;
-  color: #303133;
+  color: #000000;
   line-height: 1.4;
 }
 
 .item-content h4 a {
-  color: #409EFF;
+  color: #000000;
   text-decoration: none;
 }
 
@@ -534,6 +665,53 @@ onMounted(async () => {
   margin: 4px 0;
 }
 
+.log-content {
+  max-height: 150px;
+  overflow-y: auto;
+  padding: 8px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+/* 备忘详情样式 */
+.memo-detail-content {
+  padding: 20px;
+}
+
+.memo-detail-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 白色背景输入框 */
+.white-bg-input :deep(.el-input__wrapper) {
+  background-color: white;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.white-bg-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #409eff inset;
+}
+
+/* 富文本编辑器自定义样式 */
+:deep(.log-editor) {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+}
+
+:deep(.ql-toolbar) {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+}
+
+:deep(.ql-container) {
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
 /* 暗色主题适配 */
 :deep(.dark) {
   .main-content {
@@ -541,13 +719,14 @@ onMounted(async () => {
   }
 
   .stats-card,
-  .list-card {
+  .list-card-1,
+  .list-card-2 {
     background-color: #2d2d2d;
     border-color: rgba(255, 255, 255, 0.1);
   }
 
   .card-title {
-    color: #e5e7eb;
+    color: #ffffff;
   }
 
   .list-item {
@@ -556,8 +735,7 @@ onMounted(async () => {
     border-color: #4a4a4a;
   }
 
-  .item-content h4,
-  .memo-header h4 {
+  .item-content h4 {
     color: #e5e7eb;
   }
 
@@ -567,6 +745,10 @@ onMounted(async () => {
 
   .memo-content {
     color: #a0a0a0;
+  }
+
+  .log-content {
+    background-color: #2d2d2d;
   }
 
   .stat-label {
@@ -592,8 +774,9 @@ onMounted(async () => {
     margin-bottom: 10px;
   }
 
-  .list-card {
-    height: 350px;
+  .list-card-1, .list-card-2 {
+    height: auto;
+    min-height: 350px;
     margin-bottom: 20px;
   }
 

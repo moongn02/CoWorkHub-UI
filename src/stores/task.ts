@@ -13,7 +13,9 @@ import {createTask,
     splitTask,
     getParentTask,
     getSubTasks,
-    getTaskActivities
+    getTaskActivities,
+    getCurrentUserTasks,
+    getUnfinishedTasksCount
 } from '@/api/task'
 import { ElMessage } from 'element-plus'
 
@@ -227,6 +229,45 @@ export const useTaskStore = defineStore('task', () => {
         }
     }
 
+    // 获取当前用户的任务列表
+    const getCurrentUserTasksAction = async () => {
+        loading.value = true
+        try {
+            const res = await getCurrentUserTasks()
+            const { success, data, message } = res.data;
+            if (success) {
+                taskComments.value = data;
+                return data;
+            } else {
+                ElMessage.error(message || '获取当前用户任务列表失败');
+                return [];
+            }
+        } catch (error) {
+            console.error('获取当前用户任务列表失败:', error)
+            throw error
+        } finally {
+            loading.value = false
+        }
+    }
+
+    // 获取未完成任务数量
+    const getUnfinishedTasksCountAction = async () => {
+        try {
+            const res = await getUnfinishedTasksCount()
+            const { success, data, message } = res.data;
+            if (success) {
+                taskComments.value = data;
+                return data;
+            } else {
+                ElMessage.error(message || '获取未完成任务数量失败');
+                return [];
+            }
+        } catch (error) {
+            console.error('获取未完成任务数量失败:', error)
+            return 0
+        }
+    }
+
     // 搜索任务
     // 获取分页任务列表
     const getPagingTaskListAction = async (query: any = {}) => {
@@ -270,6 +311,8 @@ export const useTaskStore = defineStore('task', () => {
         splitTaskAction,
         getParentTaskAction,
         getSubTasksAction,
-        getTaskActivitiesAction
+        getTaskActivitiesAction,
+        getCurrentUserTasksAction,
+        getUnfinishedTasksCountAction
     }
 })

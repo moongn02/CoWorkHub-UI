@@ -11,7 +11,9 @@ import { createIssue,
     getIssueComments,
     relateTask,
     getRelatedTask,
-    getIssueActivities
+    getIssueActivities,
+    getCurrentUserIssues,
+    getUnresolvedIssuesCount
 } from '@/api/issue'
 import { ElMessage } from 'element-plus'
 
@@ -217,6 +219,45 @@ export const useIssueStore = defineStore('issue', () => {
         }
     };
 
+    // 获取当前用户的问题列表
+    const getCurrentUserIssuesAction = async () => {
+        loading.value = true
+        try {
+            const res = await getCurrentUserIssues()
+            const { success, data, message } = res.data;
+            if (success) {
+                issueActivities.value = data;
+                return data;
+            } else {
+                ElMessage.error(message || '获取问题进度失败');
+                return [];
+            }
+        } catch (error) {
+            console.error('获取当前用户问题列表失败:', error)
+            throw error
+        } finally {
+            loading.value = false
+        }
+    }
+
+    // 获取未解决问题数量
+    const getUnresolvedIssuesCountAction = async () => {
+        try {
+            const res = await getUnresolvedIssuesCount()
+            const { success, data, message } = res.data;
+            if (success) {
+                issueActivities.value = data;
+                return data;
+            } else {
+                ElMessage.error(message || '获取问题进度失败');
+                return [];
+            }
+        } catch (error) {
+            console.error('获取未解决问题数量失败:', error)
+            return 0
+        }
+    }
+
     // 获取问题列表（分页）
     const getIssueListAction = async (params: any) => {
         const res = await getIssueList(params)
@@ -254,6 +295,8 @@ export const useIssueStore = defineStore('issue', () => {
         addIssueCommentAction,
         getIssueCommentsAction,
         relateTaskAction,
-        getIssueActivitiesAction
+        getIssueActivitiesAction,
+        getCurrentUserIssuesAction,
+        getUnresolvedIssuesCountAction
     }
 })

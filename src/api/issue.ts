@@ -104,6 +104,22 @@ export function getIssueActivities(id: string) {
     });
 }
 
+// 获取当前用户的问题列表
+export function getCurrentUserIssues() {
+    return request({
+        url: `/api/issue/current_user`,
+        method: 'get'
+    });
+}
+
+// 获取未解决问题数量
+export function getUnresolvedIssuesCount() {
+    return request({
+        url: `/api/issues/unresolved_count`,
+        method: 'get'
+    });
+}
+
 // 分页获取问题列表
 export function getIssueList(params: any) {
     return request({

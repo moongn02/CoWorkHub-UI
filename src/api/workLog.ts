@@ -1,6 +1,14 @@
 import request from '@/utils/request'
 import type { WorkLogData } from '@/types/workLog'
 
+// 获取今日工作日志
+export function getTodayLog() {
+    return request({
+        url: '/api/work_log/today',
+        method: 'get'
+    })
+}
+
 // 获取工作日志列表
 export function getWorkLogList(params: any) {
     return request({
