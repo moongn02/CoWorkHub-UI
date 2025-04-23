@@ -3,36 +3,41 @@
     <template #content>
       <div class="team-interface-container">
         <el-row :gutter="20">
-          <!-- Left sidebar for personnel display -->
+          <!-- 左侧部门人员树 -->
           <el-col :span="6">
             <el-card class="personnel-card" shadow="hover">
               <template #header>
                 <h3 class="card-title">部门人员</h3>
               </template>
               <el-tree
-                  :data="personnelData"
+                  :data="personnelTree"
                   :props="defaultProps"
                   @check="handlePersonnelSelect"
                   show-checkbox
                   default-expand-all
                   node-key="id"
-                  ref="personnelTree"
-              />
+                  ref="personnelTreeRef"
+                  v-loading="loadingPersonnel"
+              >
+                <template #default="{ node, data }">
+                  <span :class="{ 'department-name': !data.isLeaf }">{{ node.label }}</span>
+                </template>
+              </el-tree>
             </el-card>
           </el-col>
 
-          <!-- Right main area for work logs -->
+          <!-- 右侧工作日志 -->
           <el-col :span="18">
             <el-card class="work-log-card" shadow="hover">
               <template #header>
                 <div class="work-log-header">
                   <h3 class="card-title">工作日志</h3>
                   <div class="work-log-actions">
-                    <el-select v-model="logType" placeholder="选择日志类型" class="white-bg-input">
-                      <el-option label="全部" value="all" />
-                      <el-option label="周报" value="周报" />
-                      <el-option label="月报" value="月报" />
-                      <el-option label="日报" value="日报" />
+                    <el-select v-model="queryParams.logType" placeholder="选择日志类型" class="white-bg-input" @change="fetchWorkLogs">
+                      <el-option label="全部" value="" />
+                      <el-option label="日志" :value="1" />
+                      <el-option label="周志" :value="2" />
+                      <el-option label="月志" :value="3" />
                     </el-select>
                     <el-date-picker
                         v-model="dateRange"
@@ -41,49 +46,41 @@
                         start-placeholder="开始日期"
                         end-placeholder="结束日期"
                         class="white-bg-input"
+                        @change="handleDateRangeChange"
                     />
                   </div>
                 </div>
               </template>
 
-              <!-- Work log table -->
-              <el-table :data="filteredWorkLogs" style="width: 100%" v-loading="loading">
-                <el-table-column prop="date" label="日期" width="120" />
-                <el-table-column prop="personnel" label="人员" width="100" />
-                <el-table-column prop="type" label="类型" width="100">
-                  <template #default="scope">
-                    <el-tag :type="getLogTypeTag(scope.row.type)">{{ scope.row.type }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="content" label="内容" min-width="200">
-                  <template #default="scope">
-                    <span :title="scope.row.content">{{ truncateContent(scope.row.content, 20) }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="status" label="状态" width="100">
-                  <template #default="scope">
-                    <el-tag :type="getStatusType(scope.row.status)">{{ getStatusLabel(scope.row.status) }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="120" fixed="right">
-                  <template #default="scope">
-                    <el-button type="primary" @click="viewWorkLog(scope.row)" icon="View" circle />
-                    <el-button type="info"  @click="editWorkLog(scope.row)" icon="Edit" circle />
-                  </template>
-                </el-table-column>
-              </el-table>
+              <div class="work-log-content">
+                <!-- 工作日志表格 -->
+                <el-table :data="paginatedWorkLogs" style="width: 100%" v-loading="loadingLogs">
+                  <el-table-column prop="logDateStr" label="日期" min-width="25%" align="center" />
+                  <el-table-column prop="username" label="人员" min-width="25%" align="center" />
+                  <el-table-column prop="type" label="类型" min-width="25%" align="center">
+                    <template #default="scope">
+                      <el-tag :type="getLogTypeTag(scope.row.type)">{{ scope.row.typeText }}</el-tag>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="操作" min-width="25%" align="center">
+                    <template #default="scope">
+                      <el-button type="primary" @click="viewWorkLog(scope.row)" icon="View" circle />
+                    </template>
+                  </el-table-column>
+                </el-table>
 
-              <!-- Pagination -->
-              <div class="pagination-container">
-                <el-pagination
-                    v-model:current-page="currentPage"
-                    v-model:page-size="pageSize"
-                    :page-sizes="[10, 15, 20]"
-                    layout="total, sizes, prev, pager, next, jumper"
-                    :total="total"
-                    @size-change="handleSizeChange"
-                    @current-change="handleCurrentChange"
-                />
+                <!-- 分页 -->
+                <div class="pagination-container">
+                  <el-pagination
+                      v-model:current-page="currentPage"
+                      v-model:page-size="pageSize"
+                      :page-sizes="[5, 10, 15]"
+                      layout="total, sizes, prev, pager, next, jumper"
+                      :total="total"
+                      @size-change="handleSizeChange"
+                      @current-change="handleCurrentChange"
+                  />
+                </div>
               </div>
             </el-card>
           </el-col>
@@ -92,214 +89,205 @@
     </template>
   </Layout>
 
-  <!-- View Work Log Dialog -->
+  <!-- 查看工作日志详情对话框 -->
   <el-dialog
-      v-model="viewDialogVisible"
-      title="查看工作日志"
-      width="30%"
+      v-model="detailDialogVisible"
+      title="工作日志详情"
+      width="800px"
+      destroy-on-close
       center
-      class="work-log-dialog"
   >
-    <div v-if="selectedLog" class="log-detail-content">
-      <div class="log-item">
-        <span class="log-label">日期：</span>
-        <span class="log-value">{{ selectedLog.date }}</span>
+    <div class="log-detail-content">
+      <div class="log-detail-header">
+        <div class="log-detail-date">
+          <span>日期：{{ detailLog.logDateStr }}</span>
+          <span class="log-detail-user">提交人：{{ detailLog.username }}</span>
+        </div>
+        <el-tag :type="getLogTypeTag(detailLog.type)" effect="dark" size="large">{{ detailLog.typeText }}</el-tag>
       </div>
-      <div class="log-item">
-        <span class="log-label">人员：</span>
-        <span class="log-value">{{ selectedLog.personnel }}</span>
-      </div>
-      <div class="log-item">
-        <span class="log-label">类型：</span>
-        <span class="log-value">{{ selectedLog.type }}</span>
-      </div>
-      <div class="log-item">
-        <span class="log-label">状态：</span>
-        <span class="log-value">{{ getStatusLabel(selectedLog.status) }}</span>
-      </div>
-      <div class="log-item log-content">
-        <span class="log-label">内容：</span>
-        <span class="log-value">{{ selectedLog.content }}</span>
-      </div>
+      <div class="log-detail-divider"></div>
+      <div class="log-detail-body" v-html="detailLog.content"></div>
     </div>
-  </el-dialog>
-
-  <!-- Edit Work Log Dialog -->
-  <el-dialog v-model="editDialogVisible" title="编辑工作日志" width="50%" center>
-    <el-form :model="editForm" label-width="100px">
-      <el-form-item label="日期">
-        <el-date-picker v-model="editForm.date" type="date" placeholder="选择日期" />
-      </el-form-item>
-      <el-form-item label="类型">
-        <el-select v-model="editForm.type" placeholder="选择类型">
-          <el-option label="日报" value="日报" />
-          <el-option label="周报" value="周报" />
-          <el-option label="月报" value="月报" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="状态">
-        <el-select v-model="editForm.status" placeholder="选择状态">
-          <el-option label="进行中" value="in_progress" />
-          <el-option label="已完成" value="completed" />
-          <el-option label="已取消" value="cancelled" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="内容">
-        <el-input v-model="editForm.content" type="textarea" :rows="4" />
-      </el-form-item>
-    </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveEditedWorkLog">保存</el-button>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
       </span>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import Layout from '@/components/Layout.vue'
-import { ElMessage } from 'element-plus'
+import { useTeamStore } from '@/stores/team'
+// 初始化store
+const teamStore = useTeamStore()
 
-// Personnel data (single department, expanded by default)
-const personnelData = [
-  {
-    id: 'dept1',
-    label: '技术部',
-    children: [
-      { id: 1, label: '张三' },
-      { id: 2, label: '李四' },
-      { id: 3, label: '王五' },
-    ],
-  },
-]
+// 部门人员树
+const personnelTree = ref([])
+const loadingPersonnel = ref(false)
+const personnelTreeRef = ref(null)
+const selectedUserIds = ref([])
 
-const defaultProps = {
-  children: 'children',
-  label: 'label',
-}
+// 日志查询参数
+const queryParams = reactive({
+  userIds: [] as number[],
+  startDate: '',
+  endDate: '',
+  logType: '',
+  current: 1,
+  size: 10
+})
 
-// Work log data
-const workLogs = ref([
-  { id: 1, date: '2025-03-15', type: '日报', content: '完成了登录功能的优化', status: 'completed', personnel: '张三' },
-  { id: 2, date: '2025-03-20', type: '周报', content: '进行中的UI重构项目', status: 'in_progress', personnel: '李四' },
-  { id: 3, date: '2025-04-01', type: '月报', content: '后端API开发进度报告', status: 'in_progress', personnel: '王五' },
-  { id: 4, date: '2025-04-05', type: '周报', content: '完成了用户管理模块', status: 'completed', personnel: '张三' },
-  { id: 5, date: '2025-04-10', type: '周报', content: 'UI重构项目进度更新', status: 'in_progress', personnel: '李四' },
-])
-
-const loading = ref(false)
+// 分页相关
 const currentPage = ref(1)
 const pageSize = ref(10)
-const total = ref(workLogs.value.length)
-const logType = ref('all')
+const workLogs = ref([])
+const total = ref(0)
+const loadingLogs = ref(false)
 const dateRange = ref([])
-const selectedPersonnel = ref([])
-const personnelTree = ref(null)
 
-// View and Edit dialog related refs
-const viewDialogVisible = ref(false)
-const editDialogVisible = ref(false)
-const selectedLog = ref({})
-const editForm = ref({
-  id: null,
-  date: '',
-  type: '',
+// 日志详情
+const detailDialogVisible = ref(false)
+const detailLog = reactive({
+  id: 0,
+  logDate: '',
+  logDateStr: '',
+  type: 0,
+  typeText: '',
   content: '',
-  status: '',
-  personnel: ''
+  username: ''
 })
 
-// Filter work logs based on selected options
-const filteredWorkLogs = computed(() => {
-  let filtered = workLogs.value
-
-  if (selectedPersonnel.value.length > 0) {
-    filtered = filtered.filter(log => selectedPersonnel.value.includes(log.personnel))
-  }
-
-  if (logType.value !== 'all') {
-    filtered = filtered.filter(log => log.type === logType.value)
-  }
-
-  if (dateRange.value && dateRange.value.length === 2) {
-    const [start, end] = dateRange.value
-    filtered = filtered.filter(log => {
-      const logDate = new Date(log.date)
-      return logDate >= start && logDate <= end
-    })
-  }
-
-  total.value = filtered.length
-  return filtered.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
-})
-
-const handlePersonnelSelect = (data, checked) => {
-  const checkedNodes = personnelTree.value.getCheckedNodes()
-  selectedPersonnel.value = checkedNodes
-      .filter(node => !node.children)
-      .map(node => node.label)
+// 树形控件配置
+const defaultProps = {
+  children: 'children',
+  label: 'label'
 }
 
-const handleCurrentChange = (val: number) => {
-  currentPage.value = val
-}
+// 计算分页后的日志列表
+const paginatedWorkLogs = computed(() => workLogs.value)
 
+// 处理分页大小变化
 const handleSizeChange = (val: number) => {
   pageSize.value = val
+  queryParams.pageSize = val
+  fetchWorkLogs()
 }
 
-const getLogTypeTag = (type: string) => {
-  const types = {
-    '周报': 'info',
-    '月报': 'warning',
-    '日报': 'success'
-  }
-  return types[type] || 'info'
+// 处理当前页变化
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+  queryParams.pageNum = val
+  fetchWorkLogs()
 }
 
-const getStatusType = (status: string) => {
-  const types = {
-    in_progress: 'warning',
-    completed: 'success',
-    cancelled: 'danger'
-  }
-  return types[status] || 'info'
-}
+// 处理部门人员选择
+const handlePersonnelSelect = (data, checked) => {
+  if (personnelTreeRef.value) {
+    const checkedNodes = personnelTreeRef.value.getCheckedNodes()
+    // 过滤出叶子节点（用户）
+    const userNodes = checkedNodes.filter((node: any) => node.isLeaf)
+    selectedUserIds.value = userNodes.map((node: any) => node.id)
 
-const getStatusLabel = (status: string) => {
-  const labels = {
-    in_progress: '进行中',
-    completed: '已完成',
-    cancelled: '已取消'
-  }
-  return labels[status] || '未知'
-}
-
-const truncateContent = (content: string, maxLength: number) => {
-  if (content.length <= maxLength) return content
-  return content.slice(0, maxLength) + '...'
-}
-
-const viewWorkLog = (log) => {
-  selectedLog.value = log
-  viewDialogVisible.value = true
-}
-
-const editWorkLog = (log) => {
-  editForm.value = { ...log }
-  editDialogVisible.value = true
-}
-
-const saveEditedWorkLog = () => {
-  const index = workLogs.value.findIndex(log => log.id === editForm.value.id)
-  if (index !== -1) {
-    workLogs.value[index] = { ...editForm.value }
-    ElMessage.success('工作日志已更新')
-    editDialogVisible.value = false
+    // 更新查询参数并获取日志
+    queryParams.userIds = selectedUserIds.value.join(',')
+    queryParams.pageNum = 1  // 重置为第一页
+    currentPage.value = 1
+    fetchWorkLogs()
   }
 }
+
+// 处理日期范围变化
+const handleDateRangeChange = () => {
+  if (dateRange.value && dateRange.value.length === 2) {
+    queryParams.startDate = formatDate(dateRange.value[0])
+    queryParams.endDate = formatDate(dateRange.value[1])
+  } else {
+    queryParams.startDate = ''
+    queryParams.endDate = ''
+  }
+  fetchWorkLogs()
+}
+
+// 获取部门人员树
+const fetchPersonnelTree = async () => {
+  loadingPersonnel.value = true
+  try {
+    const data = await teamStore.getDepartmentPersonnelAction()
+    personnelTree.value = data
+  } catch (error) {
+    console.error('获取部门人员树失败:', error)
+  } finally {
+    loadingPersonnel.value = false
+  }
+}
+
+// 获取工作日志列表
+const fetchWorkLogs = async () => {
+  if (!queryParams.userIds) {
+    workLogs.value = []
+    total.value = 0
+    return
+  }
+
+  loadingLogs.value = true
+  try {
+    const data = await teamStore.pagePersonnelWorkLogsAction(queryParams)
+    if (data && data.records) {
+      workLogs.value = data.records
+      total.value = data.total
+    } else {
+      workLogs.value = []
+      total.value = 0
+    }
+  } catch (error) {
+    console.error('获取工作日志列表失败:', error)
+    workLogs.value = []
+    total.value = 0
+  } finally {
+    loadingLogs.value = false
+  }
+}
+
+// 查看工作日志详情
+const viewWorkLog = async (log: any) => {
+  if (!log || !log.id) return
+
+  try {
+    const logDetail = await teamStore.getWorkLogDetailAction(log.id)
+    if (logDetail) {
+      Object.assign(detailLog, logDetail)
+      detailDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('获取工作日志详情失败:', error)
+  }
+}
+
+// 获取日志类型标签类型
+const getLogTypeTag = (type: number | string): string => {
+  const typeMap: Record<string, string> = {
+    1: 'primary',
+    2: 'success',
+    3: 'danger'
+  }
+
+  return typeMap[type as string] || 'info'
+}
+
+// 格式化日期为字符串
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// 组件挂载时获取数据
+onMounted(async () => {
+  await fetchPersonnelTree()
+})
 </script>
 
 <style scoped>
@@ -321,6 +309,10 @@ const saveEditedWorkLog = () => {
   color: #303133;
 }
 
+.department-name {
+  font-weight: bold;
+}
+
 .work-log-header {
   display: flex;
   justify-content: space-between;
@@ -332,8 +324,24 @@ const saveEditedWorkLog = () => {
   gap: 10px;
 }
 
+.work-log-content {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  min-height: calc(80vh - 60px);
+}
+
 .white-bg-input {
   width: 200px;
+}
+
+.white-bg-input :deep(.el-input__wrapper) {
+  background-color: white;
+  box-shadow: 0 0 0 1px #dcdfe6 inset;
+}
+
+.white-bg-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #409eff inset;
 }
 
 .pagination-container {
@@ -342,7 +350,100 @@ const saveEditedWorkLog = () => {
   justify-content: flex-end;
 }
 
-/* Dark theme adaptations */
+/* 工作日志详情样式 */
+.log-detail-content {
+  padding: 20px;
+}
+
+.log-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.log-detail-date {
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.log-detail-user {
+  font-size: 14px;
+}
+
+.log-detail-divider {
+  height: 1px;
+  background-color: #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.log-detail-body {
+  height: 400px;
+  padding: 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  overflow-y: auto;
+}
+
+/* 富文本内容样式 */
+.log-detail-body :deep(p) {
+  margin: 8px 0;
+}
+
+.log-detail-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.log-detail-body :deep(ul),
+.log-detail-body :deep(ol) {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.log-detail-body :deep(pre) {
+  background-color: #f6f6f6;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+
+.log-detail-body :deep(blockquote) {
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 8px 0;
+  color: #666;
+}
+
+/* 响应式调整 */
+@media screen and (max-width: 768px) {
+  .personnel-card,
+  .work-log-card {
+    margin-bottom: 20px;
+  }
+
+  .work-log-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .work-log-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .white-bg-input {
+    width: 100%;
+  }
+}
+
+/* 暗色主题适配 */
 :deep(.dark) {
   .personnel-card,
   .work-log-card {
@@ -360,6 +461,12 @@ const saveEditedWorkLog = () => {
   }
 
   .white-bg-input :deep(.el-input__inner) {
+    color: #e5e7eb;
+  }
+
+  .log-detail-body {
+    background-color: #1c1c1c;
+    border-color: #4a4a4a;
     color: #e5e7eb;
   }
 
@@ -384,121 +491,6 @@ const saveEditedWorkLog = () => {
 
   :deep(.el-tree-node:focus > .el-tree-node__content) {
     background-color: #4a4a4a;
-  }
-}
-
-/* 弹窗整体样式 */
-:deep(.work-log-dialog) {
-  .el-dialog__header {
-    padding: 20px;
-    border-bottom: 1px solid #eee;
-
-    .el-dialog__title {
-      font-size: 20px;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .el-dialog__body {
-    padding: 30px;
-  }
-}
-
-/* 日志内容样式 */
-.log-detail-content {
-  .log-item {
-    margin-bottom: 15px;
-    line-height: 1.8;
-    font-size: 16px;
-    display: flex;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    /* 内容区域特殊处理 */
-    &.log-content {
-      flex-direction: column;
-
-      .log-value {
-        margin-top: 10px;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        background: #f8f9fa;
-        padding: 15px;
-        border-radius: 8px;
-      }
-    }
-  }
-
-  .log-label {
-    font-weight: 600;
-    color: #333;
-    margin-right: 10px;
-    min-width: 80px;
-  }
-
-  .log-value {
-    color: #666;
-    flex: 1;
-  }
-}
-
-/* 响应式设计 */
-@media screen and (max-width: 768px) {
-  :deep(.work-log-dialog) {
-    width: 90% !important; /* 在小屏幕上占据更多宽度 */
-
-    .el-dialog__body {
-      padding: 20px;
-    }
-  }
-
-  .log-detail-content {
-    .log-item {
-      font-size: 14px;
-      margin-bottom: 15px;
-      flex-direction: column;
-
-      &.log-content .log-value {
-        padding: 10px;
-      }
-    }
-
-    .log-label {
-      margin-bottom: 5px;
-    }
-  }
-}
-
-/* 状态样式 */
-.log-value {
-  &.status-pending {
-    color: #e6a23c;
-  }
-  &.status-completed {
-    color: #67c23a;
-  }
-  &.status-cancelled {
-    color: #f56c6c;
-  }
-}
-
-/* 暗色主题适配 */
-:deep(.dark) {
-  .log-detail-content {
-    .log-label {
-      color: #e5e7eb;
-    }
-
-    .log-value {
-      color: #9ca3af;
-    }
-
-    .log-content .log-value {
-      background: #374151;
-    }
   }
 }
 </style>
