@@ -85,8 +85,7 @@
                 </div>
               </template>
               <div class="scrollable-content" v-loading="memoLoading">
-
-                <div v-if="memos.length > 0"v-for="memo in memos" :key="memo.id" class="list-item">
+                <div v-if="memos.length > 0" v-for="memo in memos" :key="memo.id" class="list-item">
                   <div class="item-header">
                     <h4>{{ memo.title }}</h4>
                     <el-button type="text" icon="view" @click="viewFullMemo(memo)"></el-button>
@@ -118,13 +117,12 @@
                 <div v-else class="list-item">
                   <div class="item-header">
                     <el-tag size="small" :type="getLogTypeTag(todayLog.type)">{{ todayLog.typeText }}</el-tag>
-                    <el-button type="text" icon="edit" @click="editTodayLog"></el-button>
+                    <el-button type="text" icon="view" @click="viewTodayLog"></el-button>
                   </div>
                   <div class="item-content">
                     <div class="memo-content log-content" v-html="todayLog.content"></div>
                     <p class="item-info">
                       <span>日期: {{ todayLog.logDateStr }}</span>
-                      <span>创建: {{ formatDateTime(todayLog.createTime) }}</span>
                     </p>
                   </div>
                 </div>
@@ -205,6 +203,31 @@
       </span>
     </template>
   </el-dialog>
+
+  <!-- 查看工作日志详情对话框 -->
+  <el-dialog
+      v-model="detailLogDialogVisible"
+      title="工作日志详情"
+      width="800px"
+      destroy-on-close
+      center
+  >
+    <div class="log-detail-content">
+      <div class="log-detail-header">
+        <div class="log-detail-date">
+          <span>日期：{{ detailLog.logDateStr }}</span>
+        </div>
+        <el-tag :type="getLogTypeTag(detailLog.type)" effect="dark" size="large">{{ detailLog.typeText }}</el-tag>
+      </div>
+      <div class="log-detail-divider"></div>
+      <div class="log-detail-body" v-html="detailLog.content"></div>
+    </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="detailLogDialogVisible = false">关闭</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -253,6 +276,16 @@ const todayLog = ref(null)
 const logDialogVisible = ref(false)
 const isEditing = ref(false)
 const viewMemoDialogVisible = ref(false)
+const detailLogDialogVisible = ref(false)
+
+const detailLog = reactive({
+  id: null,
+  logDate: '',
+  type: 1,
+  typeText: '',
+  content: '',
+  logDateStr: ''
+})
 const selectedMemo = ref({
   id: '',
   title: '',
@@ -393,6 +426,19 @@ const getHasTodayLogText = (type: number | string): string => {
   }
 
   return typeMap[type as string] || 'info'
+}
+
+const viewTodayLog = () => {
+  if (!todayLog.value) return
+
+  detailLog.id = todayLog.value.id
+  detailLog.logDate = todayLog.value.logDate
+  detailLog.type = todayLog.value.type
+  detailLog.typeText = todayLog.value.typeText
+  detailLog.content = todayLog.value.content
+  detailLog.logDateStr = todayLog.value.logDateStr
+
+  detailLogDialogVisible.value = true
 }
 
 // 截断内容
@@ -669,6 +715,7 @@ onMounted(async () => {
 
 .log-content {
   max-height: 150px;
+  min-height: 150px;
   overflow-y: auto;
   padding: 8px 15px;
   background-color: #f8f9fa;
@@ -701,7 +748,7 @@ onMounted(async () => {
   line-height: 1.6;
   max-height: 350px;
   overflow-y: auto;
-  padding: 15px;
+  padding: 0 0 0 15px;
   border: 1px solid #ebeef5;
   border-radius: 4px;
   background-color: #f8f8f8;
@@ -724,6 +771,70 @@ onMounted(async () => {
 
 .white-bg-input :deep(.el-input__wrapper.is-focus) {
   box-shadow: 0 0 0 1px #409eff inset;
+}
+
+/* 日志详情样式 */
+.log-detail-content {
+  padding: 20px;
+}
+
+.log-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.log-detail-date {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.log-detail-divider {
+  height: 1px;
+  background-color: #e4e7ed;
+  margin-bottom: 20px;
+}
+
+.log-detail-body {
+  min-height: 350px;
+  max-height: 350px;
+  padding: 10px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  overflow-y: auto;
+}
+
+/* 确保富文本内容在详情中正确显示 */
+.log-detail-body :deep(p) {
+  margin: 8px 0;
+}
+
+.log-detail-body :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.log-detail-body :deep(ul),
+.log-detail-body :deep(ol) {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.log-detail-body :deep(pre) {
+  background-color: #f6f6f6;
+  padding: 8px;
+  border-radius: 4px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+
+.log-detail-body :deep(blockquote) {
+  border-left: 4px solid #ddd;
+  padding-left: 12px;
+  margin: 8px 0;
+  color: #666;
 }
 
 /* 富文本编辑器自定义样式 */
@@ -791,6 +902,16 @@ onMounted(async () => {
 
   .scrollable-content::-webkit-scrollbar-thumb {
     background: #666;
+  }
+
+  .log-detail-body {
+    background-color: #1c1c1c;
+    border-color: #4a4a4a;
+    color: #e5e7eb;
+  }
+
+  .log-detail-divider {
+    background-color: #4a4a4a;
   }
 }
 

@@ -435,7 +435,7 @@ onMounted(async () => {
   line-height: 1.6;
   max-height: 350px;
   overflow-y: auto;
-  padding: 15px;
+  padding: 0 0 0 15px;
   border: 1px solid #ebeef5;
   border-radius: 4px;
   background-color: #f8f8f8;
