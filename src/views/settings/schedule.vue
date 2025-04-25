@@ -1,43 +1,59 @@
 <template>
   <Layout>
     <template #content>
-      <div class="task-schedule-container">
-        <el-card class="task-card" shadow="hover">
+      <div class="job-schedule-container">
+        <el-card class="job-card" shadow="hover">
           <template #header>
-            <div class="task-header">
+            <div class="job-header">
               <h3 class="card-title">定时管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteTasks" :disabled="selectedTasks.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="handleAddTask">添加作业</el-button>
+                <el-button type="danger" @click="batchDeleteJobs" :disabled="selectedJobs.length === 0">批量删除</el-button>
+                <el-button type="primary" @click="handleAddJob">添加作业</el-button>
               </div>
             </div>
           </template>
 
           <!-- 搜索条件 -->
-          <div class="task-actions">
+          <div class="job-actions">
             <el-select
                 v-model="searchForm.status"
                 placeholder="作业状态"
                 class="white-bg-input"
+                filterable
                 clearable
             >
               <el-option label="全部" value="" />
-              <el-option label="启动" value="normal" />
-              <el-option label="暂停" value="suspended" />
+              <el-option label="正常" :value="1" />
+              <el-option label="暂停" :value="2" />
             </el-select>
             <el-select
-                v-model="searchForm.executionStatus"
-                placeholder="最近执行状态"
+                v-model="searchForm.objectType"
+                placeholder="对象类型"
                 class="white-bg-input"
+                filterable
                 clearable
             >
               <el-option label="全部" value="" />
-              <el-option label="成功" value="success" />
-              <el-option label="失败" value="failed" />
+              <el-option label="任务" value="TASK" />
+              <el-option label="问题" value="ISSUE" />
+              <el-option label="工作日志" value="WORK_LOG" />
+            </el-select>
+            <el-select
+                v-model="searchForm.triggerType"
+                placeholder="触发类型"
+                class="white-bg-input"
+                filterable
+                clearable
+            >
+              <el-option label="全部" value="" />
+              <el-option label="临期提醒" value="DEADLINE_APPROACHING" />
+              <el-option label="状态变更" value="STATUS_CHANGED" />
+              <el-option label="新分配提醒" value="NEW_ASSIGNMENT" />
+              <el-option label="已逾期提醒" value="OVERDUE" />
             </el-select>
             <el-input
-                v-model="searchForm.keyword"
-                placeholder="搜索作业"
+                v-model="searchForm.name"
+                placeholder="搜索作业名称"
                 class="white-bg-input"
                 @keyup.enter="handleSearch"
             />
@@ -47,7 +63,7 @@
 
           <!-- 作业表格 -->
           <el-table
-              :data="filteredTasks"
+              :data="jobList"
               style="width: 100%"
               v-loading="loading"
               @selection-change="handleSelectionChange"
@@ -72,24 +88,28 @@
             <el-table-column prop="status" label="作业状态" width="100">
               <template #default="scope">
                 <el-tag :type="getStatusType(scope.row.status)">
-                  {{ getStatusLabel(scope.row.status) }}
+                  {{ scope.row.statusText }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="executeCondition" label="执行条件" min-width="150" />
-            <el-table-column prop="nextExecutionTime" label="下次执行时间" width="180" />
-            <el-table-column label="操作" width="210" fixed="right">
+            <el-table-column label="下次执行时间" width="180">
               <template #default="scope">
-                <el-button type="primary" @click="viewExecutionRecord(scope.row)" icon="Document" circle title="执行记录" />
-                <el-button type="warning" @click="handleEditTask(scope.row)" icon="Edit" circle title="编辑作业" />
+                {{ formatDateTime(scope.row.nextRunTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right">
+              <template #default="scope">
+                <el-button type="primary" @click="viewJobLogs(scope.row)" icon="Document" circle title="执行记录" />
+                <el-button type="success" @click="triggerJob(scope.row)" icon="VideoPlay" circle title="立即执行" />
+                <el-button type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑作业" />
                 <el-button
-                    :type="scope.row.status === 'normal' ? 'info' : 'success'"
-                    @click="scope.row.status === 'normal' ? handleSuspendTask(scope.row) : handleStartTask(scope.row)"
-                    :icon="scope.row.status === 'normal' ? 'VideoPause' : 'VideoPlay'"
+                    :type="scope.row.status === 1 ? 'info' : 'success'"
+                    @click="scope.row.status === 1 ? pauseJob(scope.row) : resumeJob(scope.row)"
+                    :icon="scope.row.status === 1 ? 'VideoPause' : 'VideoPlay'"
                     circle
-                    :title="scope.row.status === 'normal' ? '暂停作业' : '启动作业'"
+                    :title="scope.row.status === 1 ? '暂停作业' : '恢复作业'"
                 />
-                <el-button type="danger" @click="handleDeleteTask(scope.row)" icon="Delete" circle title="删除作业" />
+                <el-button type="danger" @click="handleDeleteJob(scope.row)" icon="Delete" circle title="删除作业" />
               </template>
             </el-table-column>
           </el-table>
@@ -97,11 +117,11 @@
           <!-- 分页 -->
           <div class="pagination-container">
             <el-pagination
-                v-model:current-page="currentPage"
-                v-model:page-size="pageSize"
+                v-model:current-page="pagination.current"
+                v-model:page-size="pagination.size"
                 :page-sizes="[10, 15, 20]"
                 layout="total, sizes, prev, pager, next, jumper"
-                :total="total"
+                :total="pagination.total"
                 @size-change="handleSizeChange"
                 @current-change="handleCurrentChange"
             />
@@ -113,106 +133,277 @@
 
   <!-- 作业表单对话框 -->
   <el-dialog
-      v-model="taskFormVisible"
+      v-model="jobFormVisible"
       :title="isEditing ? '编辑作业' : '添加作业'"
-      width="40%"
+      width="50%"
       center
+      class="job-detail-dialog"
   >
-    <el-form :model="taskForm" label-width="100px" :rules="formRules" ref="taskFormRef">
+    <el-form :model="jobForm" label-width="120px" :rules="formRules" ref="jobFormRef">
       <el-form-item label="作业名称" prop="name">
-        <el-input v-model="taskForm.name" maxlength="30" show-word-limit />
-      </el-form-item>
-      <el-form-item label="Cron表达式" prop="cronExpression">
-        <el-input v-model="taskForm.cronExpression" />
-      </el-form-item>
-      <el-form-item label="执行条件" prop="executeCondition">
-        <el-input v-model="taskForm.executeCondition" />
-      </el-form-item>
-      <el-form-item label="Api地址" prop="apiUrl">
-        <el-input v-model="taskForm.apiUrl" />
-      </el-form-item>
-      <el-form-item label="请求方式" prop="requestMethod">
-        <el-select v-model="taskForm.requestMethod" style="width: 100%">
-          <el-option label="GET" value="get" />
-          <el-option label="POST" value="post" />
-          <el-option label="PUT" value="put" />
-          <el-option label="DELETE" value="delete" />
-        </el-select>
+        <el-input v-model="jobForm.name" maxlength="30" show-word-limit />
       </el-form-item>
       <el-form-item label="作业描述" prop="description">
         <el-input
-            v-model="taskForm.description"
+            v-model="jobForm.description"
             type="textarea"
-            :rows="4"
+            :rows="3"
             maxlength="200"
             show-word-limit
             placeholder="请输入作业描述信息"
         />
       </el-form-item>
+      <el-form-item label="Cron表达式" prop="cronExpression">
+        <el-input v-model="jobForm.cronExpression" placeholder="例如: 0 0 12 * * ?" />
+        <!-- 添加cron表达式选择帮助 -->
+        <div class="cron-helper">
+          <p class="helper-text">常用表达式:</p>
+          <el-button
+              v-for="(cron, index) in commonCronExpressions"
+              :key="index"
+              type="text"
+              @click="selectCommonCronExpression(cron.value)">
+            {{cron.label}}
+          </el-button>
+        </div>
+      </el-form-item>
+      <el-form-item label="对象类型" prop="objectType">
+        <el-select v-model="jobForm.objectType" @change="handleObjectTypeChange" placeholder="请选择对象类型">
+          <el-option label="任务" value="TASK" />
+          <el-option label="问题" value="ISSUE" />
+          <el-option label="工作日志" value="WORK_LOG" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="触发类型" prop="triggerType">
+        <el-select v-model="jobForm.triggerType" @change="handleTriggerTypeChange"  placeholder="请选择触发类型">
+          <el-option label="临期提醒" value="DEADLINE_APPROACHING" />
+          <el-option
+              v-if="jobForm.objectType !== 'WORK_LOG'"
+              label="状态变更"
+              value="STATUS_CHANGED"
+          />
+          <el-option label="新分配提醒" value="NEW_ASSIGNMENT" />
+          <el-option label="已逾期提醒" value="OVERDUE" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="条件参数" prop="conditions">
+        <el-form-item v-if="jobForm.triggerType === 'DEADLINE_APPROACHING'" label="临期天数" label-width="80px">
+          <el-input-number v-model="jobForm.conditionParams.daysBeforeDeadline" :min="1" :max="30" />
+        </el-form-item>
+        <el-form-item v-if="jobForm.triggerType === 'STATUS_CHANGED'" label="状态列表" label-width="80px">
+          <el-select
+              v-model="jobForm.conditionParams.statuses"
+              multiple
+              placeholder="选择状态"
+              class="status-select-width">
+            <el-option
+                v-for="status in statusOptionsForObjectType"
+                :key="status.value"
+                :label="status.label"
+                :value="status.value"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form-item>
+      <el-form-item label="通知设置" prop="notification">
+        <el-checkbox v-model="jobForm.notification.ccToCreator">抄送给创建者</el-checkbox>
+        <el-checkbox v-model="jobForm.notification.includeManagers">通知管理者</el-checkbox>
+      </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="taskFormVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveTask">保存</el-button>
+        <el-button @click="jobFormVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveJob">保存</el-button>
       </span>
     </template>
   </el-dialog>
 
   <!-- 执行记录对话框 -->
   <el-dialog
-      v-model="recordVisible"
+      v-model="logDialogVisible"
       title="执行记录"
       width="70%"
       center
-      class="task-detail-dialog"
+      class="job-detail-dialog"
   >
-    <div v-if="selectedTask" class="task-detail-content">
+    <div v-if="selectedJob" class="job-detail-content">
       <div class="detail-item">
         <span class="detail-label">作业名称：</span>
-        <span class="detail-value">{{ selectedTask.name }}</span>
+        <span class="detail-value">{{ selectedJob.name }}</span>
       </div>
       <div class="detail-item">
         <span class="detail-label">作业描述：</span>
-        <span class="detail-value">{{ selectedTask.description }}</span>
+        <span class="detail-value">{{ selectedJob.description }}</span>
       </div>
       <div class="detail-item">
         <span class="detail-label">Cron表达式：</span>
-        <span class="detail-value">{{ selectedTask.cronExpression }}</span>
+        <span class="detail-value">{{ selectedJob.cronExpression }}</span>
       </div>
       <div class="detail-item">
-        <span class="detail-label">执行条件：</span>
-        <span class="detail-value">{{ selectedTask.executeCondition }}</span>
+        <span class="detail-label">作业状态：</span>
+        <span class="detail-value">
+          <el-tag :type="selectedJob.status === 1 ? 'success' : 'danger'" size="small">
+            {{ selectedJob.statusText }}
+          </el-tag>
+        </span>
       </div>
     </div>
     <el-divider />
-    <el-table :data="executionRecords" style="width: 100%">
-      <el-table-column prop="executionTime" label="执行时间" width="180" />
+
+    <!-- 日志搜索 -->
+    <div class="log-search">
+      <el-select
+          v-model="logSearchForm.status"
+          placeholder="执行状态"
+          clearable
+          class="white-bg-input"
+      >
+        <el-option label="全部" value="" />
+        <el-option label="成功" :value="1" />
+        <el-option label="失败" :value="2" />
+      </el-select>
+      <el-date-picker
+          v-model="logSearchForm.dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
+          class="white-bg-input"
+      />
+      <el-button type="primary" @click="searchJobLogs">搜索</el-button>
+      <el-button @click="resetLogSearch">重置</el-button>
+    </div>
+
+    <!-- 日志表格 -->
+    <el-table :data="jobLogs" style="width: 100%" v-loading="logsLoading">
+      <el-table-column prop="id" label="ID" width="80" />
+      <el-table-column label="执行时间" width="180">
+        <template #default="scope">
+          {{ formatDateTime(scope.row.executionTime) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="100">
         <template #default="scope">
-          <el-tag :type="getExecutionStatusType(scope.row.status)">
-            {{ scope.row.status === 'success' ? '成功' : '失败' }}
+          <el-tag :type="getLogStatusType(scope.row.status)">
+            {{ scope.row.statusText }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="duration" label="耗时" width="120" />
-      <el-table-column prop="result" label="执行结果" />
+      <el-table-column prop="message" label="执行消息" />
+      <el-table-column label="创建时间" width="180">
+        <template #default="scope">
+          {{ formatDateTime(scope.row.createdTime) }}
+        </template>
+      </el-table-column>
     </el-table>
+
+    <!-- 日志分页 -->
+    <div class="pagination-container">
+      <el-pagination
+          v-model:current-page="logPagination.current"
+          v-model:page-size="logPagination.size"
+          :page-sizes="[10, 15, 20]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="logPagination.total"
+          @size-change="handleLogSizeChange"
+          @current-change="handleLogPageChange"
+      />
+    </div>
+
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="recordVisible = false">关闭</el-button>
+        <el-button @click="logDialogVisible = false">关闭</el-button>
       </span>
     </template>
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
+import { useScheduleStore } from '@/stores/schedule'
 
-// 任务表单引用
-const taskFormRef = ref<FormInstance>()
+// 作业表单引用
+const jobFormRef = ref<FormInstance>()
+
+// 初始化 store
+const scheduleStore = useScheduleStore()
+
+// 状态选项 - 任务
+const taskStatusOptions = [
+  { label: '已分派', value: 1 },
+  { label: '处理中', value: 2 },
+  { label: '已完成', value: 3 },
+  { label: '测试中', value: 4 },
+  { label: '已暂停', value: 5 },
+  { label: '已关闭', value: 6 }
+]
+
+// 状态选项 - 问题
+const issueStatusOptions = [
+  { label: '已分派', value: 1 },
+  { label: '处理中', value: 2 },
+  { label: '已解决', value: 3 },
+  { label: '已暂停', value: 4 },
+  { label: '已关闭', value: 5 }
+]
+
+// 根据对象类型计算状态选项
+const statusOptionsForObjectType = computed(() => {
+  if (jobForm.objectType === 'TASK') {
+    return taskStatusOptions
+  } else if (jobForm.objectType === 'ISSUE') {
+    return issueStatusOptions
+  }
+  return []
+})
+
+// Cron 表达式验证
+const validateCronExpression = (rule, value, callback) => {
+  // 基本格式验证: 秒 分 时 日 月 周(星期)
+  const cronRegex = /^(\S+\s+){5}\S+$/;
+  if (!cronRegex.test(value)) {
+    callback(new Error('Cron表达式格式不正确'));
+    return;
+  }
+
+  // 常见的错误模式检查
+  const parts = value.split(/\s+/);
+  const seconds = parts[0];
+  const minutes = parts[1];
+  const hours = parts[2];
+  const dayOfMonth = parts[3];
+  const month = parts[4];
+  const dayOfWeek = parts[5];
+
+  // 秒范围检查 (0-59)
+  if (seconds !== '*' && !/^(\d+(-\d+)?(,\d+(-\d+)?)*|\*\/\d+)$/.test(seconds)) {
+    callback(new Error('秒字段格式不正确'));
+    return;
+  }
+
+  // 常见的有效cron表达式模式
+  const validPatterns = [
+    /^\d+\s+\d+\s+\d+\s+\*\s+\*\s+\?$/, // 特定时间每天执行
+    /^\d+\s+\d+\s+\d+\s+\?\s+\*\s+\d+$/, // 特定时间每周某天执行
+    /^\d+\s+\d+\s+\d+\s+\d+\s+\*\s+\?$/, // 特定时间每月某天执行
+    /^0\s+0\/\d+\s+\*\s+\*\s+\*\s+\?$/,  // 每隔n小时执行
+  ];
+
+  // 如果满足常见模式之一，则视为有效
+  if (validPatterns.some(pattern => pattern.test(value))) {
+    callback();
+    return;
+  }
+
+  // 如果无法确定是否有效，则允许通过但给出提示
+  ElMessage.warning('提供的cron表达式可能有效，但建议使用常见模式，如"0 0 12 * * ?"（每天中午12点执行）');
+  callback();
+};
 
 // 表单验证规则
 const formRules = {
@@ -221,188 +412,183 @@ const formRules = {
     { min: 2, max: 30, message: '长度在 2 到 30 个字符', trigger: 'blur' }
   ],
   cronExpression: [
-    { required: true, message: '请输入Cron表达式', trigger: 'blur' }
+    { required: true, message: '请输入Cron表达式', trigger: 'blur' },
+    { validator: validateCronExpression, trigger: 'blur' }
   ],
-  apiUrl: [
-    { required: true, message: '请输入Api地址', trigger: 'blur' }
+  objectType: [
+    { required: true, message: '请选择对象类型', trigger: 'change' }
   ],
-  requestMethod: [
-    { required: true, message: '请选择请求方式', trigger: 'change' }
+  triggerType: [
+    { required: true, message: '请选择触发类型', trigger: 'change' }
   ]
 }
 
-// 示例数据
-const tasks = ref([
-  {
-    id: 1,
-    name: '出库分析',
-    department: 'tech',
-    lastExecutionTime: '2023-05-28 00:10:00',
-    cronExpression: '0/0 10 0 * * ?',
-    status: 'normal',
-    description: '每天0：10执行一次',
-    apiUrl: 'http://127.0.0.1:9950/Health/index',
-    requestMethod: 'post',
-    executeCondition: '系统正常运行',
-    nextExecutionTime: '2023-05-29 00:10:00'
-  },
-  {
-    id: 2,
-    name: '每日统计结果',
-    department: 'marketing',
-    lastExecutionTime: '2023-05-28 00:15:00',
-    cronExpression: '0/0 15 0 * * ?',
-    status: 'normal',
-    description: '每天0:15分执行一次',
-    apiUrl: 'http://127.0.0.1:9950/Health/index',
-    requestMethod: 'post',
-    executeCondition: '前一天数据准备完毕',
-    nextExecutionTime: '2023-05-29 00:15:00'
-  },
-  {
-    id: 3,
-    name: '库存预警',
-    department: 'tech',
-    lastExecutionTime: '2023-05-28 08:00:00',
-    cronExpression: '0 0 8 * * ?',
-    status: 'suspended',
-    description: '每天8点检查库存状态',
-    apiUrl: 'http://127.0.0.1:9950/Stock/check',
-    requestMethod: 'get',
-    executeCondition: '系统正常运行',
-    nextExecutionTime: '待启动'
-  }
-])
+// 提供几个常用的cron表达式作为参考
+const commonCronExpressions = [
+  { label: '每天中午12点执行', value: '0 0 12 * * ?' },
+  { label: '每小时执行一次', value: '0 0 * * * ?' },
+  { label: '每30分钟执行一次', value: '0 0/30 * * * ?' },
+  { label: '每周一上午10点执行', value: '0 0 10 ? * MON' }
+];
 
-const executionRecords = ref([
-  {
-    executionTime: '2023-05-28 00:10:00',
-    status: 'success',
-    duration: '2.5s',
-    result: '执行成功'
-  },
-  {
-    executionTime: '2023-05-27 00:10:00',
-    status: 'failed',
-    duration: '1.8s',
-    result: '网络超时'
-  }
-])
+// 添加一个便捷选择cron表达式的方法
+const selectCommonCronExpression = (expression) => {
+  jobForm.cronExpression = expression;
+};
 
-// 状态
+// 状态变量
 const loading = ref(false)
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(tasks.value.length)
-const taskFormVisible = ref(false)
-const recordVisible = ref(false)
+const logsLoading = ref(false)
+const jobFormVisible = ref(false)
+const logDialogVisible = ref(false)
 const isEditing = ref(false)
-const selectedTasks = ref([])
-const selectedTask = ref(null)
+const selectedJobs = ref([])
+const selectedJob = ref(null)
+const jobList = ref([])
+const jobLogs = ref([])
 
 // 搜索表单
 const searchForm = reactive({
+  name: '',
   status: '',
-  keyword: '',
-  executionStatus: ''
+  objectType: '',
+  triggerType: ''
 })
 
-// 任务表单
-const taskForm = reactive({
+// 日志搜索表单
+const logSearchForm = reactive({
+  status: '',
+  dateRange: []
+})
+
+// 分页参数
+const pagination = reactive({
+  current: 1,
+  size: 10,
+  total: 0
+})
+
+// 日志分页参数
+const logPagination = reactive({
+  current: 1,
+  size: 10,
+  total: 0
+})
+
+// 作业表单
+const jobForm = reactive({
   id: null,
   name: '',
-  cronExpression: '',
-  apiUrl: '',
-  requestMethod: 'post',
   description: '',
-  executeCondition: '',
-  nextExecutionTime: ''
+  cronExpression: '',
+  objectType: '',
+  triggerType: '',
+  conditionParams: {
+    daysBeforeDeadline: 3,
+    statuses: [],
+  },
+  notification: {
+    ccToCreator: true,
+    includeManagers: false,
+    template: ''
+  }
 })
 
-// 计算属性：过滤后的任务列表
-const filteredTasks = computed(() => {
-  return tasks.value.slice((currentPage.value - 1) * pageSize.value, currentPage.value * pageSize.value)
-})
+// 处理对象类型变更
+const handleObjectTypeChange = () => {
+  // 如果对象类型是工作日志，则不允许选择状态变更触发类型
+  if (jobForm.objectType === 'WORK_LOG' && jobForm.triggerType === 'STATUS_CHANGED') {
+    jobForm.triggerType = ''
+  }
 
-// 加载数据
+  // 清空状态列表
+  jobForm.conditionParams.statuses = []
+}
+
+// 处理触发类型变更
+const handleTriggerTypeChange = () => {
+  // 清空对应参数
+  if (jobForm.triggerType === 'DEADLINE_APPROACHING') {
+    jobForm.conditionParams.statuses = []
+    jobForm.conditionParams.daysBeforeDeadline = 3
+  } else if (jobForm.triggerType === 'STATUS_CHANGED') {
+    jobForm.conditionParams.daysBeforeDeadline = 0
+    jobForm.conditionParams.statuses = []
+  } else {
+    jobForm.conditionParams.daysBeforeDeadline = 0
+    jobForm.conditionParams.statuses = []
+  }
+}
+
+// 加载作业列表
 onMounted(() => {
-  // 实际项目中会从API获取数据
-  fetchTasks()
+  fetchJobs()
 })
 
-// 获取任务列表
-const fetchTasks = () => {
+// 获取作业列表
+const fetchJobs = async () => {
   loading.value = true
   try {
-    // 这里应该是API调用
-    setTimeout(() => {
-      // 模拟API调用后的处理
-      const result = tasks.value.filter(task => {
-        // 按状态筛选
-        if (searchForm.status && task.status !== searchForm.status) {
-          return false
-        }
-        // 按关键词筛选
-        if (searchForm.keyword && !task.name.toLowerCase().includes(searchForm.keyword.toLowerCase())) {
-          return false
-        }
-        // 按执行状态筛选 (实际项目中需要从后端获取)
-        // 这里简化处理
-        return true
-      })
-      total.value = result.length
-      loading.value = false
-    }, 500)
+    const params = {
+      name: searchForm.name || undefined,
+      status: searchForm.status || undefined,
+      objectType: searchForm.objectType || undefined,
+      triggerType: searchForm.triggerType || undefined
+    }
+
+    await scheduleStore.getPagingJobListAction(pagination.current, pagination.size, params)
+    jobList.value = scheduleStore.jobList
+    pagination.total = scheduleStore.pagination.total
   } catch (error) {
     ElMessage.error('获取作业列表失败')
+    console.error('获取作业列表失败', error)
+  } finally {
     loading.value = false
   }
 }
 
 // 处理选择变化
 const handleSelectionChange = (val) => {
-  selectedTasks.value = val
+  selectedJobs.value = val
 }
 
 // 处理大小变化
 const handleSizeChange = (val: number) => {
-  pageSize.value = val
-  currentPage.value = 1
+  pagination.size = val
+  pagination.current = 1
+  fetchJobs()
 }
 
 // 处理页码变化
 const handleCurrentChange = (val: number) => {
-  currentPage.value = val
+  pagination.current = val
+  fetchJobs()
 }
 
 // 搜索
 const handleSearch = () => {
-  currentPage.value = 1
-  fetchTasks()
+  pagination.current = 1
+  fetchJobs()
 }
 
 // 重置搜索
 const handleReset = () => {
+  searchForm.name = ''
   searchForm.status = ''
-  searchForm.keyword = ''
-  searchForm.executionStatus = ''
-  currentPage.value = 1
-  fetchTasks()
+  searchForm.objectType = ''
+  searchForm.triggerType = ''
+  pagination.current = 1
+  fetchJobs()
 }
 
 // 获取状态类型
-const getStatusType = (status: string) => {
-  return status === 'normal' ? 'success' : 'danger'
+const getStatusType = (status: number) => {
+  return status === 1 ? 'success' : 'danger'
 }
 
-// 获取状态标签
-const getStatusLabel = (status: string) => {
-  return status === 'normal' ? '正常' : '暂停'
-}
-
-// 获取执行状态类型
-const getExecutionStatusType = (status: string) => {
-  return status === 'success' ? 'success' : 'danger'
+// 获取日志状态类型
+const getLogStatusType = (status: number) => {
+  return status === 1 ? 'success' : 'danger'
 }
 
 // 文本截断
@@ -412,123 +598,212 @@ const truncateText = (text: string, maxLength: number) => {
   return text.slice(0, maxLength) + '...'
 }
 
+// 格式化日期时间
+const formatDateTime = (dateTime: string) => {
+  if (!dateTime) return ''
+  return new Date(dateTime).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  })
+}
+
 // 批量删除
-const batchDeleteTasks = () => {
-  if (selectedTasks.value.length === 0) {
+const batchDeleteJobs = () => {
+  if (selectedJobs.value.length === 0) {
     ElMessage.warning('请至少选择一个作业')
     return
   }
 
   ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedTasks.value.length} 个作业吗？此操作不可恢复！`,
+      `确定要删除选中的 ${selectedJobs.value.length} 个作业吗？此操作不可恢复！`,
       '警告',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
       }
-  ).then(() => {
-    // 在实际项目中，这里应该调用API
-    const ids = selectedTasks.value.map(task => task.id)
-    // 模拟删除操作
-    tasks.value = tasks.value.filter(task => !ids.includes(task.id))
-    total.value = tasks.value.length
-    ElMessage.success(`已成功删除 ${selectedTasks.value.length} 个作业`)
-    selectedTasks.value = []
+  ).then(async () => {
+    try {
+      const ids = selectedJobs.value.map(job => job.id)
+      const success = await scheduleStore.batchDeleteJobsAction(ids)
+
+      if (success) {
+        await fetchJobs()
+      }
+    } catch (error) {
+      ElMessage.error('删除作业失败')
+      console.error('删除作业失败', error)
+    }
   }).catch(() => {
     // 用户取消操作
   })
 }
 
-// 添加任务
-const handleAddTask = () => {
+// 添加作业
+const handleAddJob = () => {
   isEditing.value = false
-  Object.assign(taskForm, {
+  Object.assign(jobForm, {
     id: null,
     name: '',
-    cronExpression: '',
-    apiUrl: '',
-    requestMethod: 'post',
     description: '',
-    executeCondition: ''
+    cronExpression: '',
+    objectType: '',
+    triggerType: '',
+    conditionParams: {
+      daysBeforeDeadline: 3,
+      statuses: []
+    },
+    notification: {
+      ccToCreator: true,
+      includeManagers: false,
+      template: ''
+    }
   })
-  taskFormVisible.value = true
+  jobFormVisible.value = true
 }
 
-// 编辑任务
-const handleEditTask = (task) => {
+// 编辑作业
+const handleEditJob = async (job) => {
   isEditing.value = true
-  Object.assign(taskForm, task)
-  taskFormVisible.value = true
+
+  try {
+    const jobDetail = await scheduleStore.getJobDetailAction(job.id)
+
+    if (jobDetail) {
+      // 解析条件JSON
+      const condition = JSON.parse(jobDetail.runCondition || '{}')
+
+      Object.assign(jobForm, {
+        id: jobDetail.id,
+        name: jobDetail.name,
+        description: jobDetail.description,
+        cronExpression: jobDetail.cronExpression,
+        objectType: condition.objectType || '',
+        triggerType: condition.triggerType || '',
+        conditionParams: condition.conditions || {
+          daysBeforeDeadline: 3,
+          statuses: []
+        },
+        notification: condition.notification || {
+          ccToCreator: true,
+          includeManagers: false,
+          template: ''
+        }
+      })
+
+      jobFormVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('获取作业详情失败')
+    console.error('获取作业详情失败', error)
+  }
 }
 
-// 保存任务
-const saveTask = async () => {
-  if (!taskFormRef.value) return
+// 保存作业
+const saveJob = async () => {
+  if (!jobFormRef.value) return
 
-  await taskFormRef.value.validate(async (valid) => {
+  await jobFormRef.value.validate(async (valid) => {
     if (valid) {
-      if (isEditing.value) {
-        // 编辑现有任务
-        const index = tasks.value.findIndex(task => task.id === taskForm.id)
-        if (index !== -1) {
-          tasks.value[index] = { ...tasks.value[index], ...taskForm }
-          ElMessage.success('作业已更新')
+      try {
+        // 构建条件JSON
+        const conditionObj = {
+          objectType: jobForm.objectType,
+          triggerType: jobForm.triggerType,
+          conditions: jobForm.conditionParams,
+          notification: jobForm.notification
         }
-      } else {
-        // 添加新任务
-        const newTask = {
-          ...taskForm,
-          id: tasks.value.length > 0 ? Math.max(...tasks.value.map(t => t.id)) + 1 : 1,
-          status: 'normal',
-          lastExecutionTime: '未执行',
-          nextExecutionTime: '计算中...'
+
+        const jobData = {
+          id: jobForm.id,
+          name: jobForm.name,
+          description: jobForm.description,
+          cronExpression: jobForm.cronExpression,
+          runCondition: JSON.stringify(conditionObj)
         }
-        tasks.value.push(newTask)
-        total.value = tasks.value.length
-        ElMessage.success('作业已添加')
+
+        let success = false
+
+        if (isEditing.value) {
+          // 更新作业
+          success = await scheduleStore.updateJobAction(jobForm.id, jobData)
+        } else {
+          // 添加新作业
+          success = await scheduleStore.addJobAction(jobData)
+        }
+
+        if (success) {
+          jobFormVisible.value = false
+          fetchJobs()
+        }
+      } catch (error) {
+        ElMessage.error(isEditing.value ? '更新作业失败' : '添加作业失败')
+        console.error(isEditing.value ? '更新作业失败' : '添加作业失败', error)
       }
-      taskFormVisible.value = false
     }
   })
 }
 
-// 启动任务
-const handleStartTask = (task) => {
-  const index = tasks.value.findIndex(t => t.id === task.id)
-  if (index !== -1) {
-    tasks.value[index].status = 'normal'
-    tasks.value[index].nextExecutionTime = '计算中...'
-    ElMessage.success('作业已启动')
+// 暂停作业
+const pauseJob = async (job) => {
+  try {
+    const success = await scheduleStore.pauseJobAction(job.id)
+    if (success) {
+      fetchJobs()
+    }
+  } catch (error) {
+    ElMessage.error('暂停作业失败')
+    console.error('暂停作业失败', error)
   }
 }
 
-// 暂停任务
-const handleSuspendTask = (task) => {
-  const index = tasks.value.findIndex(t => t.id === task.id)
-  if (index !== -1) {
-    tasks.value[index].status = 'suspended'
-    tasks.value[index].nextExecutionTime = '待启动'
-    ElMessage.success('作业已暂停')
+// 恢复作业
+const resumeJob = async (job) => {
+  try {
+    const success = await scheduleStore.resumeJobAction(job.id)
+    if (success) {
+      fetchJobs()
+    }
+  } catch (error) {
+    ElMessage.error('恢复作业失败')
+    console.error('恢复作业失败', error)
   }
 }
 
-// 删除任务
-const handleDeleteTask = (task) => {
+// 立即执行作业
+const triggerJob = async (job) => {
+  try {
+    await scheduleStore.triggerJobAction(job.id)
+  } catch (error) {
+    ElMessage.error('触发作业失败')
+    console.error('触发作业失败', error)
+  }
+}
+
+// 删除作业
+const handleDeleteJob = (job) => {
   ElMessageBox.confirm(
-      '确定要删除这个作业吗？',
+      '确定要删除这个作业吗？此操作不可恢复！',
       '警告',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning',
       }
-  ).then(() => {
-    const index = tasks.value.findIndex(t => t.id === task.id)
-    if (index !== -1) {
-      tasks.value.splice(index, 1)
-      total.value = tasks.value.length
-      ElMessage.success('作业已删除')
+  ).then(async () => {
+    try {
+      const success = await scheduleStore.deleteJobAction(job.id)
+      if (success) {
+        fetchJobs()
+      }
+    } catch (error) {
+      ElMessage.error('删除作业失败')
+      console.error('删除作业失败', error)
     }
   }).catch(() => {
     // 用户取消操作
@@ -536,23 +811,79 @@ const handleDeleteTask = (task) => {
 }
 
 // 查看执行记录
-const viewExecutionRecord = (task) => {
-  selectedTask.value = task
-  recordVisible.value = true
-  // 实际应用中应该通过API获取该任务的执行记录
+const viewJobLogs = (job) => {
+  selectedJob.value = job
+  logDialogVisible.value = true
+  logPagination.current = 1
+  fetchJobLogs()
+}
+
+// 获取作业执行日志
+const fetchJobLogs = async () => {
+  if (!selectedJob.value) return
+
+  logsLoading.value = true
+  try {
+    const params = {
+      jobId: selectedJob.value.id,
+      status: logSearchForm.status || undefined
+    }
+
+    // 添加日期范围条件
+    if (logSearchForm.dateRange && logSearchForm.dateRange.length === 2) {
+      params.startDate = logSearchForm.dateRange[0]
+      params.endDate = logSearchForm.dateRange[1]
+    }
+
+    await scheduleStore.getPagingJobLogsAction(logPagination.current, logPagination.size, params)
+    jobLogs.value = scheduleStore.jobLogs
+    logPagination.total = scheduleStore.logPagination.total
+  } catch (error) {
+    ElMessage.error('获取执行记录失败')
+    console.error('获取执行记录失败', error)
+  } finally {
+    logsLoading.value = false
+  }
+}
+
+// 搜索作业日志
+const searchJobLogs = () => {
+  logPagination.current = 1
+  fetchJobLogs()
+}
+
+// 重置日志搜索
+const resetLogSearch = () => {
+  logSearchForm.status = ''
+  logSearchForm.dateRange = []
+  logPagination.current = 1
+  fetchJobLogs()
+}
+
+// 处理日志分页大小变化
+const handleLogSizeChange = (val: number) => {
+  logPagination.size = val
+  logPagination.current = 1
+  fetchJobLogs()
+}
+
+// 处理日志分页页码变化
+const handleLogPageChange = (val: number) => {
+  logPagination.current = val
+  fetchJobLogs()
 }
 </script>
 
 <style scoped>
-.task-schedule-container {
+.job-schedule-container {
   padding: 20px;
 }
 
-.task-card {
+.job-card {
   border-radius: 8px;
 }
 
-.task-header {
+.job-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -570,7 +901,7 @@ const viewExecutionRecord = (task) => {
   color: #303133;
 }
 
-.task-actions {
+.job-actions {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
@@ -596,41 +927,63 @@ const viewExecutionRecord = (task) => {
   justify-content: flex-end;
 }
 
-/* 详情对话框样式 */
-.task-detail-content {
-  .detail-item {
-    margin-bottom: 25px;
-    line-height: 1.8;
-    font-size: 16px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .detail-label {
-    font-weight: 600;
-    color: #333;
-    margin-right: 10px;
-    min-width: 90px;
-    display: inline-block;
-  }
-
-  .detail-value {
-    color: #666;
-  }
+.cron-helper {
+  margin-top: 8px;
+  font-size: 12px;
 }
 
-/* Modal styles */
-:deep(.task-detail-dialog) {
+.helper-text {
+  color: #909399;
+  margin-right: 10px;
+  display: inline-block;
+}
+
+/* 详情对话框样式 */
+.job-detail-content {
+  margin-bottom: 25px;
+}
+
+.detail-item {
+  margin-bottom: 15px;
+  line-height: 1.8;
+  font-size: 16px;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #333;
+  margin-right: 10px;
+  min-width: 90px;
+  display: inline-block;
+}
+
+.detail-value {
+  color: #666;
+}
+
+/* 日志搜索样式 */
+.log-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+/* 表单样式优化 */
+:deep(.el-form-item__content) {
+  flex-wrap: wrap;
+}
+
+/* 对话框样式 */
+:deep(.job-detail-dialog) {
   .el-dialog__header {
     padding: 20px;
     border-bottom: 1px solid #eee;
+  }
 
-    .el-dialog__title {
-      font-size: 20px;
-      font-weight: 600;
-    }
+  .el-dialog__title {
+    font-size: 20px;
+    font-weight: 600;
   }
 
   .el-dialog__body {
@@ -638,9 +991,18 @@ const viewExecutionRecord = (task) => {
   }
 }
 
-/* 暗色主题适配 */
+.status-select-width {
+  width: 300px !important;
+}
+
+/* 确保下拉菜单也有足够的宽度 */
+:deep(.status-select-width .el-select__popper) {
+  min-width: 300px !important;
+}
+
+/* 深色主题适配 */
 :deep(.dark) {
-  .task-card {
+  .job-card {
     background-color: #2d2d2d;
     border-color: rgba(255, 255, 255, 0.1);
   }
@@ -668,20 +1030,18 @@ const viewExecutionRecord = (task) => {
     background-color: #1c1c1c;
   }
 
-  .task-detail-content {
-    .detail-label {
-      color: #e5e7eb;
-    }
+  .detail-label {
+    color: #e5e7eb;
+  }
 
-    .detail-value {
-      color: #9ca3af;
-    }
+  .detail-value {
+    color: #9ca3af;
   }
 }
 
 /* 响应式适配 */
 @media screen and (max-width: 768px) {
-  .task-actions {
+  .job-actions, .log-search {
     flex-direction: column;
     align-items: stretch;
   }
