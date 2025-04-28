@@ -97,19 +97,19 @@
                 {{ formatDateTime(scope.row.nextRunTime) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="220" fixed="right">
+            <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
                 <el-button type="primary" @click="viewJobLogs(scope.row)" icon="Document" circle title="执行记录" />
                 <el-button type="success" @click="triggerJob(scope.row)" icon="VideoPlay" circle title="立即执行" />
-                <el-button type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑作业" />
+                <el-button type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑" />
                 <el-button
-                    :type="scope.row.status === 1 ? 'info' : 'success'"
+                    :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="scope.row.status === 1 ? pauseJob(scope.row) : resumeJob(scope.row)"
-                    :icon="scope.row.status === 1 ? 'VideoPause' : 'VideoPlay'"
+                    :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
-                    :title="scope.row.status === 1 ? '暂停作业' : '恢复作业'"
+                    :title="scope.row.status === 1 ? '暂停' : '启动'"
                 />
-                <el-button type="danger" @click="handleDeleteJob(scope.row)" icon="Delete" circle title="删除作业" />
+                <el-button type="danger" @click="handleDeleteJob(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -242,10 +242,10 @@
       <div class="detail-item">
         <span class="detail-label">作业状态：</span>
         <span class="detail-value">
-          <el-tag :type="selectedJob.status === 1 ? 'success' : 'danger'" size="small">
-            {{ selectedJob.statusText }}
-          </el-tag>
-        </span>
+        <el-tag :type="selectedJob.status === 1 ? 'success' : 'danger'" size="small">
+          {{ selectedJob.statusText }}
+        </el-tag>
+      </span>
       </div>
     </div>
     <el-divider />
@@ -291,7 +291,21 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="message" label="执行消息" />
+      <el-table-column prop="message" label="执行消息" show-overflow-tooltip>
+        <template #default="scope">
+          <span v-if="scope.row.status === 1" class="success-message">
+            {{ scope.row.message }}
+          </span>
+          <el-button
+              v-else
+              type="danger"
+              link
+              @click="showErrorDetail(scope.row)"
+          >
+            执行失败，点击查看错误详情
+          </el-button>
+        </template>
+      </el-table-column>
       <el-table-column label="创建时间" width="180">
         <template #default="scope">
           {{ formatDateTime(scope.row.createdTime) }}
@@ -313,9 +327,25 @@
     </div>
 
     <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="logDialogVisible = false">关闭</el-button>
-      </span>
+    <span class="dialog-footer">
+      <el-button @click="logDialogVisible = false">关闭</el-button>
+    </span>
+    </template>
+  </el-dialog>
+
+  <!-- 错误详情弹窗 -->
+  <el-dialog
+      v-model="errorDetailVisible"
+      title="错误详情"
+      width="60%"
+      destroy-on-close
+  >
+    <pre class="error-detail">{{ selectedErrorMessage }}</pre>
+    <template #footer>
+    <span class="dialog-footer">
+      <el-button @click="errorDetailVisible = false">关闭</el-button>
+      <el-button type="primary" @click="copyErrorMessage">复制</el-button>
+    </span>
     </template>
   </el-dialog>
 </template>
@@ -329,6 +359,10 @@ import { useScheduleStore } from '@/stores/schedule'
 
 // 作业表单引用
 const jobFormRef = ref<FormInstance>()
+
+// 错误详情弹窗相关
+const errorDetailVisible = ref(false)
+const selectedErrorMessage = ref('')
 
 // 初始化 store
 const scheduleStore = useScheduleStore()
@@ -494,10 +528,25 @@ const jobForm = reactive({
   }
 })
 
+// 显示错误详情
+const showErrorDetail = (log) => {
+  selectedErrorMessage.value = log.message
+  errorDetailVisible.value = true
+}
+
+// 复制错误信息
+const copyErrorMessage = () => {
+  navigator.clipboard.writeText(selectedErrorMessage.value).then(() => {
+    ElMessage.success('复制成功')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
 // 处理对象类型变更
 const handleObjectTypeChange = () => {
   // 如果对象类型是工作日志，则不允许选择状态变更触发类型
-  if (jobForm.objectType === 'WORK_LOG' && jobForm.triggerType === 'STATUS_CHANGED') {
+  if (jobForm.objectType === 'WORK_LOG' && (jobForm.triggerType === 'STATUS_CHANGED' || jobForm.triggerType === 'NEW_ASSIGNMENT')) {
     jobForm.triggerType = ''
   }
 
@@ -998,6 +1047,28 @@ const handleLogPageChange = (val: number) => {
 /* 确保下拉菜单也有足够的宽度 */
 :deep(.status-select-width .el-select__popper) {
   min-width: 300px !important;
+}
+
+/* 错误详情样式 */
+.error-detail {
+  background-color: #f8f8f8;
+  padding: 15px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: monospace;
+  font-size: 13px;
+  max-height: 400px;
+  overflow-y: auto;
+  color: #e74c3c;
+}
+
+/* 深色主题适配 */
+:deep(.dark) {
+  .error-detail {
+    background-color: #2d2d2d;
+    color: #ff6b6b;
+  }
 }
 
 /* 深色主题适配 */
