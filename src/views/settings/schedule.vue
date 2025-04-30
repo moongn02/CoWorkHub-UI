@@ -177,17 +177,15 @@
       <el-form-item label="触发类型" prop="triggerType">
         <el-select v-model="jobForm.triggerType" @change="handleTriggerTypeChange"  placeholder="请选择触发类型">
           <el-option label="临期提醒" value="DEADLINE_APPROACHING" />
-          <el-option
-              v-if="jobForm.objectType !== 'WORK_LOG'"
-              label="状态变更"
-              value="STATUS_CHANGED"
+          <el-option v-if="jobForm.objectType !== 'WORK_LOG'"
+              label="状态变更" value="STATUS_CHANGED"
           />
-          <el-option label="新分配提醒" value="NEW_ASSIGNMENT" />
+          <el-option v-if="jobForm.objectType !== 'WORK_LOG'" label="新分配提醒" value="NEW_ASSIGNMENT" />
           <el-option label="已逾期提醒" value="OVERDUE" />
         </el-select>
       </el-form-item>
       <el-form-item label="条件参数" prop="conditions">
-        <el-form-item v-if="jobForm.triggerType === 'DEADLINE_APPROACHING'" label="临期天数" label-width="80px">
+        <el-form-item v-if="jobForm.triggerType === 'DEADLINE_APPROACHING' && jobForm.objectType !== 'WORK_LOG'" label="临期天数" label-width="80px">
           <el-input-number v-model="jobForm.conditionParams.daysBeforeDeadline" :min="1" :max="30" />
         </el-form-item>
         <el-form-item v-if="jobForm.triggerType === 'STATUS_CHANGED'" label="状态列表" label-width="80px">
@@ -204,6 +202,11 @@
             />
           </el-select>
         </el-form-item>
+        <div v-if="jobForm.triggerType === 'DEADLINE_APPROACHING' && jobForm.objectType === 'WORK_LOG'"
+             class="info-text">
+          <i class="el-icon-info"></i>
+          工作日志临期提醒会在每天指定时间检查用户是否提交了工作日志，未提交则发送提醒。
+        </div>
       </el-form-item>
       <el-form-item label="通知设置" prop="notification">
         <el-checkbox v-model="jobForm.notification.ccToCreator">抄送给创建者</el-checkbox>
@@ -760,6 +763,12 @@ const saveJob = async () => {
   await jobFormRef.value.validate(async (valid) => {
     if (valid) {
       try {
+        // 处理工作日志临期提醒特殊情况
+        if (jobForm.objectType === 'WORK_LOG' && jobForm.triggerType === 'DEADLINE_APPROACHING') {
+          // 对于工作日志的临期提醒，设置一个默认值，后端会忽略这个值
+          jobForm.conditionParams.daysBeforeDeadline = 0;
+        }
+
         // 构建条件JSON
         const conditionObj = {
           objectType: jobForm.objectType,
@@ -985,6 +994,12 @@ const handleLogPageChange = (val: number) => {
   color: #909399;
   margin-right: 10px;
   display: inline-block;
+}
+
+.info-text {
+  color: #909399;
+  font-size: 14px;
+  background-color: #f8f9fa;
 }
 
 /* 详情对话框样式 */
