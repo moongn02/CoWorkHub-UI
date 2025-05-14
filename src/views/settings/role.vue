@@ -385,7 +385,11 @@ const viewRole = async (role: Role) => {
 
     // 获取角色权限
     const rolePermissions = await roleStore.getRolePermissionsAction(role.id)
-    rolePermissionsData.value = await permissionStore.getPermissionTreeByIdsAction(rolePermissions)
+    if (rolePermissions && rolePermissions.length > 0) {
+      rolePermissionsData.value = await permissionStore.getPermissionTreeByIdsAction(rolePermissions)
+    } else {
+      rolePermissionsData.value = []
+    }
 
     viewRoleModalVisible.value = true
   } catch (error) {
