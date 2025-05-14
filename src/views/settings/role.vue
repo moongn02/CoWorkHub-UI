@@ -37,18 +37,18 @@
               @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55" />
-            <el-table-column prop="id" label="ID" width="80" />
-            <el-table-column label="角色名称" min-width="180">
+            <el-table-column prop="id" label="ID" width="50" />
+            <el-table-column label="角色名称" min-width="120">
               <template #default="scope">
                 <el-tooltip :content="scope.row.name" placement="top">
-                  <span>{{ truncateText(scope.row.name, 15) }}</span>
+                  <span>{{ truncateText(scope.row.name, 28) }}</span>
                 </el-tooltip>
               </template>
             </el-table-column>
             <el-table-column label="角色描述" min-width="250">
               <template #default="scope">
                 <el-tooltip :content="scope.row.description" placement="top">
-                  <span>{{ truncateText(scope.row.description, 30) }}</span>
+                  <span>{{ truncateText(scope.row.description, 50) }}</span>
                 </el-tooltip>
               </template>
             </el-table-column>

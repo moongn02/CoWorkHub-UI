@@ -25,9 +25,13 @@
             text-color="#bfcbd9"
             active-text-color="#409EFF"
         >
-          <template v-for="menu in menuList" :key="menu.path">
+          <template v-for="menu in filteredMenuList" :key="menu.path">
             <!-- 没有子菜单的菜单项 -->
-            <el-menu-item v-if="!menu.children" :index="menu.path">
+            <el-menu-item
+                v-if="!menu.children || menu.children.length === 0"
+                :index="menu.path"
+                @click="menu.path === '/logout' && handleLogout()"
+            >
               <el-icon>
                 <component :is="iconMap[menu.icon]" />
               </el-icon>
@@ -46,7 +50,6 @@
                   v-for="child in menu.children"
                   :key="child.path"
                   :index="child.path"
-                  @click="child.path === '/logout' && handleLogout()"
               >
                 {{ child.title }}
               </el-menu-item>
@@ -67,19 +70,53 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { logout } from '@/api/auth'
+import { cloneDeep } from 'lodash'
 import { menuList, iconMap } from '@/config/menu'
 import { Fold, Expand } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const isCollapse = ref(false)
 const activeMenu = ref(route.path)
 const defaultOpeneds = ref<string[]>([])
+
+// 根据权限过滤菜单
+const filteredMenuList = computed(() => {
+  // 使用深拷贝避免修改原始菜单数据
+  const clonedMenus = cloneDeep(menuList)
+  return filterMenuByPermission(clonedMenus)
+})
+
+// 过滤菜单的函数
+function filterMenuByPermission(menus) {
+  if (!menus || !Array.isArray(menus)) return []
+
+  return menus.filter(menu => {
+    // 检查是否有父级菜单权限
+    if (userStore.hasPermission(menu.permission)) {
+      // 有父级权限，保留所有子菜单
+      return true
+    } else {
+      // 没有父级权限，检查是否有任何子菜单的权限
+      if (menu.children && menu.children.length) {
+        // 过滤子菜单，只保留有权限的子菜单
+        menu.children = menu.children.filter(child =>
+            !child.permission || userStore.hasPermission(child.permission)
+        )
+        // 如果过滤后有子菜单，显示父菜单
+        return menu.children.length > 0
+      }
+      // 没有子菜单且没有父级权限，不显示
+      return false
+    }
+  })
+}
 
 onMounted(() => {
   const savedOpeneds = localStorage.getItem('menu_openeds')
@@ -131,13 +168,7 @@ const toggleCollapse = () => {
 
 const handleLogout = async () => {
   try {
-    await logout()
-    localStorage.removeItem('coworkhub_token')
-    localStorage.removeItem('menu_openeds')
-    localStorage.removeItem('menu_collapse')
-
-    ElMessage.success('退出成功')
-    router.push('/login')
+    await userStore.logoutAction()
   } catch (error) {
     console.error('退出失败:', error)
     ElMessage.error('退出失败，请重试')

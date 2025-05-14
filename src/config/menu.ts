@@ -1,4 +1,3 @@
-// src/config/menu.ts
 import {
     House,
     Odometer,
@@ -7,7 +6,7 @@ import {
     Document,
     User,
     Setting,
-    More,
+    SwitchButton
 } from '@element-plus/icons-vue'
 import type { MenuItem } from '@/types/menu'
 
@@ -17,6 +16,7 @@ export const menuList: MenuItem[] = [
         title: '我的视图',
         icon: 'House',
         component: 'home/index',
+        permission: 'home:view',
         meta: {
             title: '我的视图',
             keepAlive: true
@@ -26,11 +26,13 @@ export const menuList: MenuItem[] = [
         path: '/task',
         title: '任务管理',
         icon: 'Odometer',
+        permission: 'task:access',
         children: [
             {
                 path: '/task/create',
                 title: '创建任务',
                 component: 'task/create',
+                permission: 'task:create',
                 meta: {
                     title: '创建任务'
                 }
@@ -39,6 +41,7 @@ export const menuList: MenuItem[] = [
                 path: '/task/search',
                 title: '搜索任务',
                 component: 'task/search',
+                permission: 'task:search',
                 meta: {
                     title: '搜索任务'
                 }
@@ -49,11 +52,13 @@ export const menuList: MenuItem[] = [
         path: '/issue',
         title: '问题管理',
         icon: 'Aim',
+        permission: 'issue:access',
         children: [
             {
                 path: '/issue/create',
                 title: '创建问题',
                 component: 'issue/create',
+                permission: 'issue:create',
                 meta: {
                     title: '创建问题'
                 }
@@ -62,6 +67,7 @@ export const menuList: MenuItem[] = [
                 path: '/issue/search',
                 title: '搜索问题',
                 component: 'issue/search',
+                permission: 'issue:search',
                 meta: {
                     title: '搜索问题'
                 }
@@ -72,11 +78,13 @@ export const menuList: MenuItem[] = [
         path: '/operation',
         title: '我的操作',
         icon: 'Operation',
+        permission: 'operation:access',
         children: [
             {
                 path: '/operation/individual-center',
                 title: '个人中心',
                 component: 'my-operation/individual-center',
+                permission: 'individual:manage',
                 meta: {
                     title: '个人中心'
                 }
@@ -85,6 +93,7 @@ export const menuList: MenuItem[] = [
                 path: '/operation/work-memo',
                 title: '工作备忘',
                 component: 'my-operation/work-memo',
+                permission: 'memo:manage',
                 meta: {
                     title: '工作备忘'
                 }
@@ -94,6 +103,7 @@ export const menuList: MenuItem[] = [
                 title: '工作日志',
                 icon: 'Document',
                 component: 'my-operation/work-log',
+                permission: 'log:manage',
                 meta: {
                     title: '工作日志'
                 }
@@ -105,6 +115,7 @@ export const menuList: MenuItem[] = [
         title: '我的团队',
         icon: 'User',
         component: 'my-team/index',
+        permission: 'team:access',
         meta: {
             title: '我的团队'
         }
@@ -113,11 +124,13 @@ export const menuList: MenuItem[] = [
         path: '/settings',
         title: '配置中心',
         icon: 'Setting',
+        permission: 'settings:access',
         children: [
             {
                 path: '/settings/user',
                 title: '用户管理',
                 component: 'settings/user',
+                permission: 'user:manage',
                 meta: {
                     title: '用户管理'
                 }
@@ -126,6 +139,7 @@ export const menuList: MenuItem[] = [
                 path: '/settings/role',
                 title: '角色管理',
                 component: 'settings/role',
+                permission: 'role:manage',
                 meta: {
                     title: '角色管理'
                 }
@@ -134,6 +148,7 @@ export const menuList: MenuItem[] = [
                 path: '/settings/permission',
                 title: '权限管理',
                 component: 'settings/permission',
+                permission: 'permission:manage',
                 meta: {
                     title: '权限管理'
                 }
@@ -142,6 +157,7 @@ export const menuList: MenuItem[] = [
                 path: '/settings/project',
                 title: '项目管理',
                 component: 'settings/project',
+                permission: 'project:manage',
                 meta: {
                     title: '项目管理'
                 }
@@ -150,6 +166,7 @@ export const menuList: MenuItem[] = [
                 path: '/settings/department',
                 title: '部门管理',
                 component: 'settings/department',
+                permission: 'department:manage',
                 meta: {
                     title: '部门管理'
                 }
@@ -158,6 +175,7 @@ export const menuList: MenuItem[] = [
                 path: '/settings/schedule',
                 title: '定时管理',
                 component: 'settings/schedule',
+                permission: 'schedule:manage',
                 meta: {
                     title: '定时管理'
                 }
@@ -165,26 +183,13 @@ export const menuList: MenuItem[] = [
         ]
     },
     {
-        path: '/other',
-        title: '其他',
-        icon: 'More',
-        children: [
-            {
-                path: '/other/cache',
-                title: '刷新缓存',
-                component: 'other/cache',
-                meta: {
-                    title: '刷新缓存'
-                }
-            },
-            {
-                path: '/logout',
-                title: '退出',
-                meta: {
-                    title: '退出'
-                }
-            }
-        ]
+        path: '/logout',
+        title: '退出',
+        icon: 'SwitchButton',
+        permission: 'exit',
+        meta: {
+            title: '退出'
+        }
     }
 ]
 
@@ -197,5 +202,5 @@ export const iconMap = {
     Document,
     User,
     Setting,
-    More,
+    SwitchButton,
 }

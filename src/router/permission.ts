@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/user'
 import { getToken } from '@/utils/auth'
 import { ElMessage } from 'element-plus'
 
-const whiteList = ['/login', '/forgot-password', '/register', '/404'] // 白名单
+const whiteList = ['/login', '/forgot-password', '/register', '/404', '/403'] // 白名单
 
 router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore()
@@ -18,17 +18,38 @@ router.beforeEach(async (to, from, next) => {
             // 判断用户信息是否已获取
             const hasUserInfo = userStore.userInfo && userStore.userInfo.id
 
-            if (hasUserInfo) {
-                next()
-            } else {
+            if (!hasUserInfo) {
                 try {
                     // 获取用户信息
                     await userStore.getUserInfoAction()
-                    next()
+                    // 此时可以确保用户权限数据已加载
+
+                    // 判断页面是否有权限要求
+                    if (to.meta.permission) {
+                        if (userStore.hasPermission(to.meta.permission)) {
+                            next()
+                        } else {
+                            ElMessage.error('您没有访问该页面的权限')
+                            next({ path: '/403' })
+                        }
+                    } else {
+                        next()
+                    }
                 } catch (error) {
-                    // token 失效，清除 token 并跳转到登录页
                     userStore.resetToken()
                     next(`/login?redirect=${to.path}`)
+                }
+            } else {
+                // 已有用户信息，判断页面权限
+                if (to.meta.permission) {
+                    if (userStore.hasPermission(to.meta.permission)) {
+                        next()
+                    } else {
+                        ElMessage.error('您没有访问该页面的权限')
+                        next({ path: '/403' })
+                    }
+                } else {
+                    next()
                 }
             }
         }

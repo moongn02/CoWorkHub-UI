@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed  } from 'vue'
 import { login, logout, register } from '@/api/auth'
 import type { LoginData } from '@/types/auth'
 import { setToken, removeToken, getToken } from '@/utils/auth'
@@ -23,6 +23,8 @@ import {
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(getToken() || '')
   const userInfo = ref<any>(null)
+  const permissions = ref<string[]>([])
+  const isLoggedIn = computed(() => !!token.value)
 
   // 用户管理相关状态
   const userList = ref<any[]>([])
@@ -41,6 +43,10 @@ export const useUserStore = defineStore('user', () => {
       const { token: newToken, user } = res.data.data
       token.value = newToken
       userInfo.value = user
+      // 保存权限列表
+      permissions.value = user.permissions || []
+      // 保存权限到本地存储
+      localStorage.setItem('permissions', JSON.stringify(permissions.value))
       setToken(newToken)
 
       ElMessage.success('登录成功');
@@ -72,7 +78,12 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       token.value = ''
       userInfo.value = null
+      permissions.value = []
+      localStorage.removeItem('menu_openeds')
+      localStorage.removeItem('menu_collapse')
+      localStorage.removeItem('permissions')
       removeToken()
+      ElMessage.success('退出成功')
       await router.push('/login')
     }
   }
@@ -138,6 +149,8 @@ export const useUserStore = defineStore('user', () => {
   const resetToken = () => {
     token.value = ''
     userInfo.value = {}
+    permissions.value = []
+    localStorage.removeItem('permissions')
     removeToken()
   }
 
@@ -205,7 +218,6 @@ export const useUserStore = defineStore('user', () => {
     const res = await deleteUser(id)
     const { success } = res.data
     if (success) {
-      ElMessage.success('删除成功')
       return true
     } else {
       ElMessage.error(res.data.message)
@@ -231,7 +243,6 @@ export const useUserStore = defineStore('user', () => {
     const res = await resetUserPassword(id)
     const { success } = res.data
     if (success) {
-      ElMessage.success('重置密码成功')
       return true
     } else {
       ElMessage.error(res.data.message)
@@ -257,7 +268,6 @@ export const useUserStore = defineStore('user', () => {
     const res = await updateUserRole(userId, roleId)
     const { success } = res.data
     if (success) {
-      ElMessage.success('更新成功')
       return true
     } else {
       ElMessage.error(res.data.message)
@@ -265,12 +275,47 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 初始化时从localStorage恢复权限
+  const initPermissions = () => {
+    const savedPermissions = localStorage.getItem('permissions')
+    if (savedPermissions) {
+      try {
+        permissions.value = JSON.parse(savedPermissions)
+      } catch (e) {
+        permissions.value = []
+      }
+    }
+  }
+
+  // 检查用户是否拥有指定权限
+  const hasPermission = (permission: string): boolean => {
+    if (!permissions.value || permissions.value.length === 0) {
+      return false
+    }
+    return permissions.value.includes(permission)
+  }
+
+  // 检查用户是否拥有指定权限列表中的任意一个权限
+  const hasAnyPermission = (permissionList: string[]): boolean => {
+    return permissionList.some(permission => hasPermission(permission))
+  }
+
+  // 检查用户是否拥有指定权限列表中的所有权限
+  const hasAllPermissions = (permissionList: string[]): boolean => {
+    return permissionList.every(permission => hasPermission(permission))
+  }
+
+  // 初始化权限
+  initPermissions()
+
   return {
     token,
     userInfo,
     userList,
     pagination,
     loading,
+    permissions,
+    isLoggedIn,
     resetToken,
     loginAction,
     registerAction,
@@ -280,7 +325,6 @@ export const useUserStore = defineStore('user', () => {
     updateUserInfoAction,
     changePasswordAction,
     getUsersAction,
-    // 用户管理相关
     getPagingUserListAction,
     addUserAction,
     updateUserAction,
@@ -288,6 +332,9 @@ export const useUserStore = defineStore('user', () => {
     batchDeleteUsersAction,
     resetUserPasswordAction,
     updateUserStatusAction,
-    updateUserRoleAction
+    updateUserRoleAction,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions
   }
 })
