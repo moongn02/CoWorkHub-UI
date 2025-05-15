@@ -501,7 +501,7 @@ const submitLog = async () => {
         // 更新仪表盘统计
         await fetchDashboardStats()
       } catch (error) {
-        ElMessage.error('提交日志失败')
+        ElMessage.error('工作日志提交失败')
       }
     }
   })

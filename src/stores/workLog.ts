@@ -111,14 +111,14 @@ export const useWorkLogStore = defineStore('workLog', () => {
             const res = await createWorkLog(logData)
             const { success } = res.data
             if (success) {
-                ElMessage.success('工作日志创建成功')
+                ElMessage.success('工作日志提交成功')
                 return true
             } else {
                 ElMessage.error(res.data.message)
                 return false
             }
         } catch (error) {
-            ElMessage.error('创建工作日志失败')
+            ElMessage.error('工作日志提交失败')
             return false
         }
     }
