@@ -69,7 +69,7 @@
               @selection-change="handleSelectionChange"
           >
             <el-table-column type="selection" width="55" />
-            <el-table-column prop="id" label="ID" width="80" />
+            <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="作业名称" min-width="150">
               <template #default="scope">
                 <el-tooltip :content="scope.row.name" placement="top">
@@ -84,8 +84,8 @@
                 </el-tooltip>
               </template>
             </el-table-column>
-            <el-table-column prop="cronExpression" label="Cron表达式" width="150" />
-            <el-table-column prop="status" label="作业状态" width="100">
+            <el-table-column prop="cronExpression" label="Cron表达式" width="130" />
+            <el-table-column prop="status" label="作业状态" width="80">
               <template #default="scope">
                 <el-tag :type="getStatusType(scope.row.status)">
                   {{ scope.row.statusText }}
@@ -97,9 +97,10 @@
                 {{ formatDateTime(scope.row.nextRunTime) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="240" fixed="right">
+            <el-table-column label="操作" width="300" fixed="right">
               <template #default="scope">
-                <el-button v-if="hasPermission('job:viewDetail')" type="primary" @click="viewJobLogs(scope.row)" icon="Document" circle title="执行记录" />
+                <el-button v-if="hasPermission('job:viewRunLog')" type="info" @click="viewJobLogs(scope.row)" icon="Document" circle title="查看执行记录" />
+                <el-button v-if="hasPermission('job:viewDetail')" type="primary" @click="viewJobDetail(scope.row)" icon="View" circle title="查看作业详情" />
                 <el-button v-if="hasPermission('job:run')" type="success" @click="triggerJob(scope.row)" icon="VideoPlay" circle title="立即执行" />
                 <el-button v-if="hasPermission('job:edit')" type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑" />
                 <el-button
@@ -225,35 +226,11 @@
   <!-- 执行记录对话框 -->
   <el-dialog
       v-model="logDialogVisible"
-      title="执行记录"
+      :title="`执行日志 - ${selectedJob?.name || ''}`"
       width="70%"
       center
       class="job-detail-dialog"
   >
-    <div v-if="selectedJob" class="job-detail-content">
-      <div class="detail-item">
-        <span class="detail-label">作业名称：</span>
-        <span class="detail-value">{{ selectedJob.name }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">作业描述：</span>
-        <span class="detail-value">{{ selectedJob.description }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">Cron表达式：</span>
-        <span class="detail-value">{{ selectedJob.cronExpression }}</span>
-      </div>
-      <div class="detail-item">
-        <span class="detail-label">作业状态：</span>
-        <span class="detail-value">
-        <el-tag :type="selectedJob.status === 1 ? 'success' : 'danger'" size="small">
-          {{ selectedJob.statusText }}
-        </el-tag>
-      </span>
-      </div>
-    </div>
-    <el-divider />
-
     <!-- 日志搜索 -->
     <div class="log-search">
       <el-select
@@ -297,9 +274,9 @@
       </el-table-column>
       <el-table-column prop="message" label="执行消息" show-overflow-tooltip>
         <template #default="scope">
-          <span v-if="scope.row.status === 1" class="success-message">
-            {{ scope.row.message }}
-          </span>
+        <span v-if="scope.row.status === 1" class="success-message">
+          {{ scope.row.message }}
+        </span>
           <el-button
               v-else
               type="danger"
@@ -337,6 +314,80 @@
     </template>
   </el-dialog>
 
+  <!-- 作业详情对话框 -->
+  <el-dialog
+      v-model="jobDetailVisible"
+      title="作业详情"
+      width="60%"
+      center
+      destroy-on-close
+      class="job-detail-dialog"
+  >
+    <div v-if="jobDetailData" class="job-detail-content">
+      <div class="detail-item">
+        <span class="detail-label">作业名称：</span>
+        <span class="detail-value">{{ jobDetailData.name }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">作业描述：</span>
+        <span class="detail-value">{{ jobDetailData.description }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">Cron表达式：</span>
+        <span class="detail-value">{{ jobDetailData.cronExpression }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">下次执行时间：</span>
+        <span class="detail-value">{{ formatDateTime(jobDetailData.nextRunTime) }}</span>
+      </div>
+      <div class="detail-item">
+        <span class="detail-label">作业状态：</span>
+        <span class="detail-value">
+        <el-tag :type="jobDetailData.status === 1 ? 'success' : 'danger'" size="small">
+          {{ jobDetailData.statusText }}
+        </el-tag>
+      </span>
+      </div>
+      <div v-if="parsedCondition" class="detail-item">
+        <span class="detail-label">对象类型：</span>
+        <span class="detail-value">{{ getObjectTypeName(parsedCondition.objectType) }}</span>
+      </div>
+      <div v-if="parsedCondition" class="detail-item">
+        <span class="detail-label">触发类型：</span>
+        <span class="detail-value">{{ getTriggerTypeName(parsedCondition.triggerType) }}</span>
+      </div>
+      <div v-if="parsedCondition && parsedCondition.conditions" class="detail-item">
+        <span class="detail-label">条件参数：</span>
+        <span class="detail-value">
+        <div v-if="parsedCondition.triggerType === 'DEADLINE_APPROACHING' && parsedCondition.objectType !== 'WORK_LOG'">
+          临期天数: {{ parsedCondition.conditions.daysBeforeDeadline }}天
+        </div>
+        <div v-if="parsedCondition.triggerType === 'STATUS_CHANGED' && parsedCondition.conditions.statuses">
+          状态列表: {{ formatStatusList(parsedCondition.conditions.statuses, parsedCondition.objectType) }}
+        </div>
+        <div v-if="parsedCondition.triggerType === 'DEADLINE_APPROACHING' && parsedCondition.objectType === 'WORK_LOG'">
+          工作日志临期提醒会在每天指定时间检查用户是否提交了工作日志，未提交则发送提醒。
+        </div>
+      </span>
+      </div>
+      <div v-if="parsedCondition && parsedCondition.notification" class="detail-item">
+        <span class="detail-label">通知设置：</span>
+        <span class="detail-value">
+        <div>
+          {{ parsedCondition.notification.ccToCreator ? '抄送给创建者' : '' }}
+          {{ parsedCondition.notification.ccToCreator && parsedCondition.notification.includeManagers ? '，' : '' }}
+          {{ parsedCondition.notification.includeManagers ? '通知管理者' : '' }}
+        </div>
+      </span>
+      </div>
+    </div>
+    <template #footer>
+    <span class="dialog-footer">
+      <el-button @click="jobDetailVisible = false">关闭</el-button>
+    </span>
+    </template>
+  </el-dialog>
+
   <!-- 错误详情弹窗 -->
   <el-dialog
       v-model="errorDetailVisible"
@@ -369,6 +420,10 @@ const jobFormRef = ref<FormInstance>()
 // 错误详情弹窗相关
 const errorDetailVisible = ref(false)
 const selectedErrorMessage = ref('')
+
+// 作业详情相关
+const jobDetailVisible = ref(false)
+const jobDetailData = ref(null)
 
 // 初始化 store
 const scheduleStore = useScheduleStore()
@@ -533,6 +588,70 @@ const jobForm = reactive({
     template: ''
   }
 })
+
+// 添加在计算属性部分
+const parsedCondition = computed(() => {
+  if (!jobDetailData.value || !jobDetailData.value.runCondition) return null;
+  try {
+    return JSON.parse(jobDetailData.value.runCondition);
+  } catch (e) {
+    return null;
+  }
+});
+
+// 获取对象类型名称
+const getObjectTypeName = (type) => {
+  const map = {
+    'TASK': '任务',
+    'ISSUE': '问题',
+    'WORK_LOG': '工作日志'
+  };
+  return map[type] || type;
+};
+
+// 获取触发类型名称
+const getTriggerTypeName = (type) => {
+  const map = {
+    'DEADLINE_APPROACHING': '临期提醒',
+    'STATUS_CHANGED': '状态变更',
+    'NEW_ASSIGNMENT': '新分配提醒',
+    'OVERDUE': '已逾期提醒'
+  };
+  return map[type] || type;
+};
+
+// 格式化状态列表
+const formatStatusList = (statuses, objectType) => {
+  if (!statuses || !Array.isArray(statuses)) return '';
+
+  const statusOptions = objectType === 'TASK' ? taskStatusOptions : issueStatusOptions;
+  return statuses.map(status => {
+    const option = statusOptions.find(opt => opt.value === status);
+    return option ? option.label : status;
+  }).join(', ');
+};
+
+// 查看执行记录
+const viewJobLogs = (job) => {
+  selectedJob.value = job
+  logDialogVisible.value = true
+  logPagination.current = 1
+  fetchJobLogs()
+}
+
+// 查看作业详情
+const viewJobDetail = async (job) => {
+  try {
+    const jobDetail = await scheduleStore.getJobDetailAction(job.id)
+    if (jobDetail) {
+      jobDetailData.value = jobDetail
+      jobDetailVisible.value = true
+    }
+  } catch (error) {
+    ElMessage.error('获取作业详情失败')
+    console.error('获取作业详情失败', error)
+  }
+}
 
 // 显示错误详情
 const showErrorDetail = (log) => {
@@ -800,7 +919,7 @@ const saveJob = async () => {
 
         if (success) {
           jobFormVisible.value = false
-          fetchJobs()
+          await fetchJobs()
         }
       } catch (error) {
         ElMessage.error(isEditing.value ? '更新作业失败' : '添加作业失败')
@@ -815,7 +934,7 @@ const pauseJob = async (job) => {
   try {
     const success = await scheduleStore.pauseJobAction(job.id)
     if (success) {
-      fetchJobs()
+      await fetchJobs()
     }
   } catch (error) {
     ElMessage.error('暂停作业失败')
@@ -823,26 +942,29 @@ const pauseJob = async (job) => {
   }
 }
 
-// 恢复作业
+// 启动作业
 const resumeJob = async (job) => {
   try {
     const success = await scheduleStore.resumeJobAction(job.id)
     if (success) {
-      fetchJobs()
+      await fetchJobs()
     }
   } catch (error) {
-    ElMessage.error('恢复作业失败')
-    console.error('恢复作业失败', error)
+    ElMessage.error('启动作业失败')
+    console.error('启动作业失败', error)
   }
 }
 
 // 立即执行作业
 const triggerJob = async (job) => {
   try {
-    await scheduleStore.triggerJobAction(job.id)
+    const success = await scheduleStore.triggerJobAction(job.id)
+    if (success) {
+      await fetchJobs()
+    }
   } catch (error) {
-    ElMessage.error('触发作业失败')
-    console.error('触发作业失败', error)
+    ElMessage.error('执行作业失败')
+    console.error('执行作业失败', error)
   }
 }
 
@@ -869,14 +991,6 @@ const handleDeleteJob = (job) => {
   }).catch(() => {
     // 用户取消操作
   })
-}
-
-// 查看执行记录
-const viewJobLogs = (job) => {
-  selectedJob.value = job
-  logDialogVisible.value = true
-  logPagination.current = 1
-  fetchJobLogs()
 }
 
 // 获取作业执行日志
