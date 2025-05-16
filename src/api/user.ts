@@ -115,3 +115,13 @@ export function updateUserRole(userId: number, roleId: number) {
         params: { roleId }
     });
 }
+
+/**
+ * 刷新用户权限
+ */
+export function getUserPermissions() {
+    return request({
+        url: '/api/user/refresh_permissions',
+        method: 'get'
+    });
+}

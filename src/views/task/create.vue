@@ -164,8 +164,8 @@
             <!-- 按钮组 -->
             <div class="button-container">
               <el-button @click="resetForm">重置</el-button>
-              <el-button @click="saveAndSplit">提交任务并拆分</el-button>
-              <el-button type="primary" @click="submitForm">提交任务</el-button>
+              <el-button v-if="hasPermission('task:createAndSplit')" @click="saveAndSplit">提交任务并拆分</el-button>
+              <el-button v-if="hasPermission('task:create:commit')" type="primary" @click="submitForm">提交任务</el-button>
             </div>
           </el-form>
         </el-card>
@@ -184,7 +184,9 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useTaskStore } from '@/stores/task'
 import { useDeptStore } from '@/stores/department'
-import {useProjectStore} from "@/stores/project";
+import {useProjectStore} from "@/stores/project"
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 const router = useRouter()
 const taskStore = useTaskStore()

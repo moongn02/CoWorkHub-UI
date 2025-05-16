@@ -100,7 +100,13 @@ function filterMenuByPermission(menus) {
   return menus.filter(menu => {
     // 检查是否有父级菜单权限
     if (userStore.hasPermission(menu.permission)) {
-      // 有父级权限，保留所有子菜单
+      // 有父级权限，但需要过滤子菜单
+      if (menu.children && menu.children.length) {
+        // 只保留有权限的子菜单
+        menu.children = menu.children.filter(child =>
+            !child.permission || userStore.hasPermission(child.permission)
+        )
+      }
       return true
     } else {
       // 没有父级权限，检查是否有任何子菜单的权限

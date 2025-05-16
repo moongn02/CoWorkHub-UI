@@ -6,7 +6,7 @@
           <template #header>
             <div class="card-header">
               <h3 class="card-title">工作备忘</h3>
-              <el-button type="primary" icon="Plus" circle @click="handleAddMemo"></el-button>
+              <el-button v-if="hasPermission('memo:add')" type="primary" icon="Plus" circle @click="handleAddMemo"></el-button>
             </div>
           </template>
 
@@ -21,8 +21,8 @@
                 <div class="memo-footer">
                   <span>{{ memo.date }}</span>
                   <el-row>
-                    <el-button type="primary" icon="Edit" circle @click="editMemo(memo)"></el-button>
-                    <el-button type="danger" icon="Delete" circle @click="deleteMemo(index)"></el-button>
+                    <el-button v-if="hasPermission('memo:edit')" type="primary" icon="Edit" circle @click="editMemo(memo)"></el-button>
+                    <el-button v-if="hasPermission('memo:delete')" type="danger" icon="Delete" circle @click="deleteMemo(index)"></el-button>
                   </el-row>
                 </div>
               </div>
@@ -106,6 +106,8 @@ import { useWorkMemoStore } from '@/stores/workMemo'
 import type { WorkMemoData } from '@/types/workMemo'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 const workMemoStore = useWorkMemoStore()
 const showMemoDialog = ref(false)

@@ -38,7 +38,7 @@
               <h4 class="section-title">安全设置</h4>
               <el-descriptions :column="1" border>
                 <el-descriptions-item label="修改密码">
-                  <el-button type="primary" plain @click="showPasswordDialog = true">
+                  <el-button v-if="hasPermission('individual:changePassword')"  type="primary" plain @click="showPasswordDialog = true">
                     修改密码
                   </el-button>
                 </el-descriptions-item>
@@ -146,8 +146,9 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import Layout from '@/components/Layout.vue'
 import {dayjs, type FormInstance, type FormRules} from 'element-plus'
-import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 const userStore = useUserStore();
 const showEditDialog = ref(false)

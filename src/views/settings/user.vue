@@ -7,8 +7,8 @@
             <div class="user-header">
               <h3 class="card-title">用户管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteUsers" :disabled="selectedUsers.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="showAddUserModal">添加用户</el-button>
+                <el-button v-if="hasPermission('user:batchDelete')" type="danger" @click="batchDeleteUsers" :disabled="selectedUsers.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('user:add')" type="primary" @click="showAddUserModal">添加用户</el-button>
               </div>
             </div>
           </template>
@@ -54,7 +54,7 @@
                 placeholder="搜索用户关键词"
                 class="white-bg-input"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('user:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
 
@@ -84,18 +84,19 @@
             </el-table-column>
             <el-table-column label="操作" width="320" fixed="right">
               <template #default="scope">
-                <el-button type="success" @click="assignRole(scope.row)" icon="Setting" circle title="分配角色" />
-                <el-button type="info" @click="resetPassword(scope.row)" icon="Key" circle title="重置密码" />
-                <el-button type="primary" @click="viewUser(scope.row)" icon="View" circle title="查看" />
+                <el-button v-if="hasPermission('user:assignRole')" type="success" @click="assignRole(scope.row)" icon="Setting" circle title="分配角色" />
+                <el-button v-if="hasPermission('user:resetPassword')" type="info" @click="resetPassword(scope.row)" icon="Key" circle title="重置密码" />
+                <el-button v-if="hasPermission('user:viewDetail')" type="primary" @click="viewUser(scope.row)" icon="View" circle title="查看" />
                 <el-button
+                    v-if="hasPermission('user:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="toggleUserStatus(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
-                <el-button type="warning" @click="editUser(scope.row)" icon="Edit" circle title="编辑" />
-                <el-button type="danger" @click="deleteUser(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('user:edit')" type="warning" @click="editUser(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('user:delete')" type="danger" @click="deleteUser(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -299,6 +300,8 @@ import type { FormInstance } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useRoleStore } from '@/stores/role'
 import { useDeptStore } from '@/stores/department'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 使用状态管理
 const userStore = useUserStore()
@@ -667,6 +670,11 @@ const saveAssignedRole = async () => {
     ElMessage.success('角色分配成功')
     assignRoleModalVisible.value = false
     await fetchUsers() // 刷新数据
+
+    // 如果修改的是当前用户的角色，刷新权限
+    if (userStore.userInfo && userStore.userInfo.roleId === selectedUser.value.id) {
+      await userStore.refreshPermissionsAction();
+    }
   }
 }
 </script>

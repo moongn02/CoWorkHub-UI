@@ -193,7 +193,9 @@
             </el-table-column>
             <el-table-column label="操作" width="150" fixed="right">
               <template #default="scope">
-                <el-button type="primary" size="small" @click="viewIssueDetail(scope.row.id)">查看</el-button>
+                <el-button v-if="hasPermission('issue:search:view')"
+                           type="primary" size="small"
+                           @click="viewIssueDetail(scope.row.id)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -225,6 +227,8 @@ import { useIssueStore } from '@/stores/issue'
 import { useUserStore } from '@/stores/user'
 import { useProjectStore } from '@/stores/project'
 import { useDeptStore } from '@/stores/department'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 const router = useRouter()
 const issueStore = useIssueStore()

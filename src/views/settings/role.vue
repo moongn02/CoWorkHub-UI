@@ -7,8 +7,8 @@
             <div class="role-header">
               <h3 class="card-title">角色管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteRoles" :disabled="selectedRoles.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="showAddRoleModal">添加角色</el-button>
+                <el-button v-if="hasPermission('role:batchDelete')" type="danger" @click="batchDeleteRoles" :disabled="selectedRoles.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('role:add')" type="primary" @click="showAddRoleModal">添加角色</el-button>
               </div>
             </div>
           </template>
@@ -25,7 +25,7 @@
                 placeholder="搜索角色关键词"
                 class="white-bg-input"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('role:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
 
@@ -61,17 +61,18 @@
             </el-table-column>
             <el-table-column label="操作" width="260" fixed="right">
               <template #default="scope">
-                <el-button type="success" @click="assignPermissions(scope.row)" icon="Setting" circle title="分配权限" />
-                <el-button type="primary" @click="viewRole(scope.row)" icon="View" circle title="查看" />
+                <el-button v-if="hasPermission('role:assignPermission')" type="success" @click="assignPermissions(scope.row)" icon="Setting" circle title="分配权限" />
+                <el-button v-if="hasPermission('role:viewDetail')" type="primary" @click="viewRole(scope.row)" icon="View" circle title="查看" />
                 <el-button
+                    v-if="hasPermission('role:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="toggleRoleStatus(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
-                <el-button type="warning" @click="editRole(scope.row)" icon="Edit" circle title="编辑" />
-                <el-button type="danger" @click="deleteRole(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('role:edit')" type="warning" @click="editRole(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('role:delete')" type="danger" @click="deleteRole(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -122,6 +123,7 @@
             show-checkbox
             node-key="id"
             default-expand-all
+            :check-strictly="true"
         />
       </el-form-item>
       <el-form-item label="角色状态" prop="status">
@@ -156,6 +158,7 @@
           show-checkbox
           node-key="id"
           default-expand-all
+          :check-strictly="true"
       />
     </div>
     <template #footer>
@@ -217,12 +220,16 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoleStore } from '@/stores/role'
+import { useUserStore } from '@/stores/user'
 import { usePermissionStore } from '@/stores/permission'
 import type { FormInstance } from 'element-plus'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 使用角色状态管理
 const roleStore = useRoleStore()
 const permissionStore = usePermissionStore()
+const userStore = useUserStore()
 
 // 表单引用
 const roleFormRef = ref<FormInstance>()
@@ -506,6 +513,11 @@ const saveRole = async () => {
         if (success) {
           roleModalVisible.value = false
           await fetchRoles()
+
+          // 如果修改的是当前用户的角色，刷新权限
+          if (userStore.userInfo && userStore.userInfo.roleId === selectedRole.value.id) {
+            await userStore.refreshPermissionsAction();
+          }
         }
       } else {
         // 添加角色
@@ -536,6 +548,11 @@ const saveAssignedPermissions = async () => {
   const success = await roleStore.updateRolePermissionsAction(selectedRole.value.id, allPermissions)
   if (success) {
     assignPermissionsModalVisible.value = false
+
+    // 如果修改的是当前用户的角色，刷新权限
+    if (userStore.userInfo && userStore.userInfo.roleId === selectedRole.value.id) {
+      await userStore.refreshPermissionsAction();
+    }
   }
 }
 </script>

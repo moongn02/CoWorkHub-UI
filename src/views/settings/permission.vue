@@ -7,8 +7,8 @@
             <div class="permission-header">
               <h3 class="card-title">权限管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeletePermissions" :disabled="selectedPermissions.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="showAddPermissionModal">添加权限</el-button>
+                <el-button v-if="hasPermission('permission:batchDelete')" type="danger" @click="batchDeletePermissions" :disabled="selectedPermissions.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('permission:add')" type="primary" @click="showAddPermissionModal">添加权限</el-button>
               </div>
             </div>
           </template>
@@ -41,7 +41,7 @@
                 placeholder="搜索权限"
                 class="white-bg-input"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('permission:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
 
@@ -86,16 +86,17 @@
             </el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewPermission(scope.row)" icon="View" circle title="查看" />
+                <el-button v-if="hasPermission('permission:viewDetail')" type="primary" @click="viewPermission(scope.row)" icon="View" circle title="查看" />
                 <el-button
+                    v-if="hasPermission('permission:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="togglePermissionStatus(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
-                <el-button type="warning" @click="editPermission(scope.row)" icon="Edit" circle title="编辑" />
-                <el-button type="danger" @click="deletePermission(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('permission:edit')" type="warning" @click="editPermission(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('permission:delete')" type="danger" @click="deletePermission(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -225,6 +226,8 @@ import Layout from '@/components/Layout.vue'
 import type {FormInstance} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {usePermissionStore} from '@/stores/permission'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 使用权限状态管理
 const permissionStore = usePermissionStore()

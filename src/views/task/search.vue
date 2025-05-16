@@ -160,7 +160,9 @@
             </el-table-column>
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="scope">
-                <el-button type="primary" size="small" @click="viewTaskDetail(scope.row.id)">查看</el-button>
+                <el-button v-if="hasPermission('task:search:view')"
+                           type="primary" size="small"
+                           @click="viewTaskDetail(scope.row.id)">查看</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -192,6 +194,8 @@ import { useTaskStore } from '@/stores/task'
 import { useUserStore } from '@/stores/user'
 import { useDeptStore } from '@/stores/department'
 import { useProjectStore } from '@/stores/project'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 初始化路由
 const router = useRouter()

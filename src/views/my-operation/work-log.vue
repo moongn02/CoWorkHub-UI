@@ -50,7 +50,7 @@
                   </el-select>
                 </el-form-item>
                 <el-form-item>
-                  <el-button type="primary" @click="handleSearch" style="width: 75%;">搜索</el-button>
+                  <el-button v-if="hasPermission('log:search')" type="primary" @click="handleSearch" style="width: 75%;">搜索</el-button>
                 </el-form-item>
                 <el-form-item>
                   <el-button @click="handleReset" style="width: 75%;">重置</el-button>
@@ -89,7 +89,7 @@
               <template #header>
                 <div class="card-header">
                   <h3 class="card-title">工作日志列表</h3>
-                  <el-button type="primary" @click="openAddLogDialog">添加日志</el-button>
+                  <el-button v-if="hasPermission('log:add')" type="primary" @click="openAddLogDialog">添加日志</el-button>
                 </div>
               </template>
               <el-timeline v-if="paginatedLogs.length > 0">
@@ -112,8 +112,8 @@
 
                     <div class="log-item-footer">
                       <div class="log-actions">
-                        <el-button type="primary" size="small" @click="viewLog(log)">查看</el-button>
-                        <el-button type="warning" size="small" @click="editLog(log)">编辑</el-button>
+                        <el-button v-if="hasPermission('log:viewDetail')" type="primary" size="small" @click="viewLog(log)">查看</el-button>
+                        <el-button v-if="hasPermission('log:edit')" type="warning" size="small" @click="editLog(log)">编辑</el-button>
                       </div>
                     </div>
                   </el-card>
@@ -222,6 +222,8 @@ import type { WorkLogData, WorkLogQuery } from '@/types/workLog'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import type { FormInstance, FormRules } from 'element-plus'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 初始化 store
 const workLogStore = useWorkLogStore()

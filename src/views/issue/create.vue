@@ -226,7 +226,7 @@
             <!-- 按钮组 -->
             <div class="button-container">
               <el-button @click="resetForm">取消</el-button>
-              <el-button type="primary" @click="submitForm">创建问题</el-button>
+              <el-button v-if="hasPermission('issue:create:commit')"  type="primary" @click="submitForm">创建问题</el-button>
             </div>
           </el-form>
         </el-card>
@@ -248,6 +248,8 @@ import { useDeptStore } from '@/stores/department'
 import { useTaskStore } from '@/stores/task'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 const route = useRoute()
 const router = useRouter()

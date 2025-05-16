@@ -7,8 +7,8 @@
             <div class="job-header">
               <h3 class="card-title">定时管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteJobs" :disabled="selectedJobs.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="handleAddJob">添加作业</el-button>
+                <el-button v-if="hasPermission('job:batchDelete')" type="danger" @click="batchDeleteJobs" :disabled="selectedJobs.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('job:add')" type="primary" @click="handleAddJob">添加作业</el-button>
               </div>
             </div>
           </template>
@@ -57,7 +57,7 @@
                 class="white-bg-input"
                 @keyup.enter="handleSearch"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('job:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="handleReset">重置</el-button>
           </div>
 
@@ -99,17 +99,18 @@
             </el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewJobLogs(scope.row)" icon="Document" circle title="执行记录" />
-                <el-button type="success" @click="triggerJob(scope.row)" icon="VideoPlay" circle title="立即执行" />
-                <el-button type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('job:viewDetail')" type="primary" @click="viewJobLogs(scope.row)" icon="Document" circle title="执行记录" />
+                <el-button v-if="hasPermission('job:run')" type="success" @click="triggerJob(scope.row)" icon="VideoPlay" circle title="立即执行" />
+                <el-button v-if="hasPermission('job:edit')" type="warning" @click="handleEditJob(scope.row)" icon="Edit" circle title="编辑" />
                 <el-button
+                    v-if="hasPermission('job:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="scope.row.status === 1 ? pauseJob(scope.row) : resumeJob(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '暂停' : '启动'"
                 />
-                <el-button type="danger" @click="handleDeleteJob(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('job:delete')" type="danger" @click="handleDeleteJob(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -321,7 +322,7 @@
       <el-pagination
           v-model:current-page="logPagination.current"
           v-model:page-size="logPagination.size"
-          :page-sizes="[10, 15, 20]"
+          :page-sizes="[5, 10, 15]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="logPagination.total"
           @size-change="handleLogSizeChange"
@@ -359,6 +360,8 @@ import Layout from '@/components/Layout.vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 import { useScheduleStore } from '@/stores/schedule'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 作业表单引用
 const jobFormRef = ref<FormInstance>()
@@ -508,7 +511,7 @@ const pagination = reactive({
 // 日志分页参数
 const logPagination = reactive({
   current: 1,
-  size: 10,
+  size: 5,
   total: 0
 })
 

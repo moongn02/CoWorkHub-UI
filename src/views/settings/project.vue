@@ -7,8 +7,8 @@
             <div class="project-header">
               <h3 class="card-title">项目管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteProjects" :disabled="selectedProjects.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="showAddProjectModal">添加项目</el-button>
+                <el-button v-if="hasPermission('project:batchDelete')" type="danger" @click="batchDeleteProjects" :disabled="selectedProjects.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('project:add')" type="primary" @click="showAddProjectModal">添加项目</el-button>
               </div>
             </div>
           </template>
@@ -60,7 +60,7 @@
                 placeholder="搜索项目"
                 class="white-bg-input"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('project:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
 
@@ -92,16 +92,17 @@
             </el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewProject(scope.row)" icon="View" circle title="查看" />
+                <el-button v-if="hasPermission('project:viewDetail')" type="primary" @click="viewProject(scope.row)" icon="View" circle title="查看" />
                 <el-button
+                    v-if="hasPermission('project:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="toggleProjectStatus(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
-                <el-button type="warning" @click="editProject(scope.row)" icon="Edit" circle title="编辑" />
-                <el-button type="danger" @click="deleteProject(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('project:edit')" type="warning" @click="editProject(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('project:delete')" type="danger" @click="deleteProject(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -230,12 +231,12 @@ import type {FormInstance} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useProjectStore} from '@/stores/project'
 import {useDeptStore} from '@/stores/department'
-import {useUserStore} from '@/stores/user'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 使用项目状态管理
 const projectStore = useProjectStore()
 const deptStore = useDeptStore()
-const userStore = useUserStore()
 
 // 表单引用
 const projectFormRef = ref<FormInstance>()

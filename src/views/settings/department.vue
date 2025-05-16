@@ -7,8 +7,8 @@
             <div class="department-header">
               <h3 class="card-title">部门管理</h3>
               <div class="header-buttons">
-                <el-button type="danger" @click="batchDeleteDepartments" :disabled="selectedDepartments.length === 0">批量删除</el-button>
-                <el-button type="primary" @click="showAddDepartmentModal">添加部门</el-button>
+                <el-button v-if="hasPermission('department:batchDelete')" type="danger" @click="batchDeleteDepartments" :disabled="selectedDepartments.length === 0">批量删除</el-button>
+                <el-button v-if="hasPermission('department:add')" type="primary" @click="showAddDepartmentModal">添加部门</el-button>
               </div>
             </div>
           </template>
@@ -41,7 +41,7 @@
                 class="white-bg-input"
                 @keyup.enter="handleSearch"
             />
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
+            <el-button v-if="hasPermission('department:search')" type="primary" @click="handleSearch">搜索</el-button>
             <el-button @click="resetSearch">重置</el-button>
           </div>
 
@@ -71,16 +71,17 @@
             </el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="scope">
-                <el-button type="primary" @click="viewDepartment(scope.row)" icon="View" circle title="查看" />
+                <el-button v-if="hasPermission('department:viewDetail')" type="primary" @click="viewDepartment(scope.row)" icon="View" circle title="查看" />
                 <el-button
+                    v-if="hasPermission('department:statusChange')"
                     :type="scope.row.status === 1 ? 'danger' : 'success'"
                     @click="toggleDepartmentStatus(scope.row)"
                     :icon="scope.row.status === 1 ? 'CircleClose' : 'Check'"
                     circle
                     :title="scope.row.status === 1 ? '禁用' : '启用'"
                 />
-                <el-button type="warning" @click="editDepartment(scope.row)" icon="Edit" circle title="编辑" />
-                <el-button type="danger" @click="deleteDepartment(scope.row)" icon="Delete" circle title="删除" />
+                <el-button v-if="hasPermission('department:edit')" type="warning" @click="editDepartment(scope.row)" icon="Edit" circle title="编辑" />
+                <el-button v-if="hasPermission('department:delete')" type="danger" @click="deleteDepartment(scope.row)" icon="Delete" circle title="删除" />
               </template>
             </el-table-column>
           </el-table>
@@ -207,6 +208,8 @@ import type {FormInstance} from 'element-plus'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {useDeptStore} from '@/stores/department'
 import {useUserStore} from '@/stores/user'
+import { usePermissionCheck } from '@/composables/usePermissionCheck'
+const { hasPermission } = usePermissionCheck()
 
 // 使用部门状态管理
 const deptStore = useDeptStore()

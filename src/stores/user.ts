@@ -17,7 +17,7 @@ import {
   batchDeleteUsers,
   resetUserPassword,
   updateUserStatus,
-  updateUserRole, updateUserInfo
+  updateUserRole, updateUserInfo, getUserPermissions
 } from "@/api/user";
 
 export const useUserStore = defineStore('user', () => {
@@ -85,6 +85,28 @@ export const useUserStore = defineStore('user', () => {
       removeToken()
       ElMessage.success('退出成功')
       await router.push('/login')
+    }
+  }
+
+  // 刷新权限
+  const refreshPermissionsAction = async () => {
+    try {
+      const res = await getUserPermissions();
+      const { success, data } = res.data;
+      if (success) {
+        // 更新权限列表
+        permissions.value = data;
+        // 保存到本地存储
+        localStorage.setItem('permissions', JSON.stringify(permissions.value));
+
+        return true;
+      } else {
+        ElMessage.error(res.data.message);
+        return false;
+      }
+    } catch (error) {
+      console.error('刷新权限失败:', error);
+      return false;
     }
   }
 
@@ -320,6 +342,7 @@ export const useUserStore = defineStore('user', () => {
     loginAction,
     registerAction,
     logoutAction,
+    refreshPermissionsAction,
     getUserInfoAction,
     getEditUserInfoAction,
     updateUserInfoAction,
