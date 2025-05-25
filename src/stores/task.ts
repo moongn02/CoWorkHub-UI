@@ -70,18 +70,27 @@ export const useTaskStore = defineStore('task', () => {
     }
 
     // 更新任务状态
-    const updateTaskStatusAction = async (id: string, status: number, comment: string, workHours: number = 0) => {
+    const updateTaskStatusAction = async (
+        id: string,
+        status: number,
+        comment: string,
+        workHours: number = 0,
+        forceComplete: boolean = false
+    ) => {
         loading.value = true;
-        const res = await updateTaskStatus(id, { status, comment, workHours });
+        const res = await updateTaskStatus(id, { status, comment, workHours, forceComplete });
         loading.value = false;
 
-        const { success, message } = res.data;
+        const { success, message, data } = res.data;
         if (success) {
             ElMessage.success('状态更新成功');
-            return true;
+            return { success: true };
+        } else if (Array.isArray(data) && data.length > 0) {
+            // 返回未完成子任务ID
+            return { success: false, unfinishedSubTaskIds: data };
         } else {
             ElMessage.error(message || '状态更新失败');
-            return false;
+            return { success: false };
         }
     };
 

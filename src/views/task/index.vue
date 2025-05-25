@@ -361,7 +361,7 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
-import { ElMessage } from 'element-plus'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import { useTaskStore } from '@/stores/task'
 import { useUserStore } from '@/stores/user';
 import { QuillEditor } from '@vueup/vue-quill'
@@ -572,14 +572,15 @@ const confirmChangeStatus = async () => {
 
   submitting.value = true;
   try {
-    const success = await taskStore.updateTaskStatusAction(
+    let result = await taskStore.updateTaskStatusAction(
         taskId.value,
         statusForm.status,
         statusForm.comment,
-        statusForm.workHours
+        statusForm.workHours,
+        false // forceComplete
     );
 
-    if (success) {
+    if (result.success) {
       resetStatusForm();
       statusDialogVisible.value = false;
 
@@ -588,6 +589,37 @@ const confirmChangeStatus = async () => {
         fetchTaskComments(),
         fetchTaskActivities()
       ]);
+    } else if (result.unfinishedSubTaskIds && result.unfinishedSubTaskIds.length > 0) {
+      // 存在未完成子任务，弹窗确认
+      const ids = result.unfinishedSubTaskIds.join(',');
+      ElMessageBox.confirm(
+          `子任务${ids}未完成，是否将子任务同步为已完成状态？`,
+          '提示',
+          {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }
+      ).then(async () => {
+        // 用户确认后，强制完成
+        let forceResult = await taskStore.updateTaskStatusAction(
+            taskId.value,
+            statusForm.status,
+            statusForm.comment,
+            statusForm.workHours,
+            true // forceComplete
+        );
+        if (forceResult.success) {
+          resetStatusForm();
+          statusDialogVisible.value = false;
+          await Promise.all([
+            fetchTaskDetail(),
+            fetchTaskComments(),
+            fetchTaskActivities(),
+            fetchSubTasks()
+          ]);
+        }
+      });
     }
   } catch (error) {
     ElMessage.error('变更状态失败');
