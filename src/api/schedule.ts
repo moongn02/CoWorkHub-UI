@@ -84,3 +84,11 @@ export function getPagingJobLogs(params: any) {
         params
     })
 }
+
+// 刷新所有作业的下次执行时间
+export function refreshNextRunTime() {
+    return request({
+        url: '/api/scheduled_job/refresh_next_run_time',
+        method: 'post'
+    })
+}

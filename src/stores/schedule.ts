@@ -10,7 +10,8 @@ import {
     resumeJob,
     triggerJob,
     batchDeleteJobs,
-    getPagingJobLogs
+    getPagingJobLogs,
+    refreshNextRunTime
 } from '@/api/schedule'
 import { ElMessage } from 'element-plus'
 
@@ -247,6 +248,25 @@ export const useScheduleStore = defineStore('schedule', () => {
         }
     }
 
+    // 刷新所有作业的下次执行时间
+    const refreshNextRunTimeAction = async () => {
+        loading.value = true
+        try {
+            const res = await refreshNextRunTime()
+            if (res.data && res.data.success) {
+                return true
+            } else {
+                ElMessage.error(res.data.message || '刷新定时作业下次执行时间失败')
+                return false
+            }
+        } catch (e) {
+            ElMessage.error('刷新定时作业下次执行时间失败')
+            return false
+        } finally {
+            loading.value = false
+        }
+    }
+
     return {
         loading,
         logsLoading,
@@ -263,6 +283,7 @@ export const useScheduleStore = defineStore('schedule', () => {
         resumeJobAction,
         triggerJobAction,
         batchDeleteJobsAction,
-        getPagingJobLogsAction
+        getPagingJobLogsAction,
+        refreshNextRunTimeAction
     }
 })

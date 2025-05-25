@@ -691,10 +691,19 @@ const handleTriggerTypeChange = () => {
   }
 }
 
-// 加载作业列表
+// 加载
 onMounted(() => {
   fetchJobs()
 })
+
+// 刷新所有作业的下次执行时间
+const refreshNextRunTime = async () => {
+  try {
+    await scheduleStore.refreshNextRunTimeAction()
+  } catch (error) {
+    console.error('刷新失败', error)
+  }
+}
 
 // 获取作业列表
 const fetchJobs = async () => {
@@ -707,6 +716,7 @@ const fetchJobs = async () => {
       triggerType: searchForm.triggerType || undefined
     }
 
+    await refreshNextRunTime()
     await scheduleStore.getPagingJobListAction(pagination.current, pagination.size, params)
     jobList.value = scheduleStore.jobList
     pagination.total = scheduleStore.pagination.total
