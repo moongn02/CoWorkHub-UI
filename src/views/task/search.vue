@@ -103,11 +103,8 @@
             <el-form-item label="任务状态">
               <el-select v-model="searchForm.status" placeholder="请选择" clearable filterable>
                 <el-option label="已分派" :value="1" />
-                <el-option label="处理中" :value="2" />
+                <el-option label="进行中" :value="2" />
                 <el-option label="已完成" :value="3" />
-                <el-option label="测试中" :value="4" />
-                <el-option label="已暂停" :value="5" />
-                <el-option label="已关闭" :value="6" />
               </el-select>
             </el-form-item>
 
@@ -354,10 +351,7 @@ const getStatusType = (status) => {
   const typeMap = {
     1: 'info',
     2: 'primary',
-    3: 'success',
-    4: 'warning',
-    5: 'danger',
-    6: 'info'
+    3: 'success'
   }
   return typeMap[status] || 'info'
 }
@@ -367,7 +361,7 @@ const getPriorityType = (priority: number) => {
   const typeMap = {
     1: 'danger',
     2: 'warning',
-    3: 'info'
+    3: 'primary'
   }
   return typeMap[priority] || 'info'
 }

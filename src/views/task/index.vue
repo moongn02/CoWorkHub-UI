@@ -392,11 +392,8 @@ const userOptions = ref([])
 // 状态选项
 const statusOptions = [
   { value: 1, label: '已分派' },
-  { value: 2, label: '处理中' },
-  { value: 3, label: '已完成' },
-  { value: 4, label: '测试中' },
-  { value: 5, label: '已暂停' },
-  { value: 6, label: '已关闭' }
+  { value: 2, label: '进行中' },
+  { value: 3, label: '已完成' }
 ];
 
 // 对话框显示状态

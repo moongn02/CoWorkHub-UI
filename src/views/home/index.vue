@@ -387,9 +387,7 @@ const getTaskStatusType = (status: number) => {
   const typeMap = {
     1: 'info',
     2: 'primary',
-    3: 'success',
-    4: 'warning',
-    5: 'danger',
+    3: 'success'
   }
   return typeMap[status] || 'info'
 }

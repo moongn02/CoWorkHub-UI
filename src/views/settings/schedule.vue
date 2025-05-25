@@ -431,11 +431,8 @@ const scheduleStore = useScheduleStore()
 // 状态选项 - 任务
 const taskStatusOptions = [
   { label: '已分派', value: 1 },
-  { label: '处理中', value: 2 },
+  { label: '进行中', value: 2 },
   { label: '已完成', value: 3 },
-  { label: '测试中', value: 4 },
-  { label: '已暂停', value: 5 },
-  { label: '已关闭', value: 6 }
 ]
 
 // 状态选项 - 问题
