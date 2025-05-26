@@ -63,6 +63,10 @@
                 <span class="meta-value">{{ task.acceptorName }}</span>
               </div>
               <div class="meta-item">
+                <span class="meta-label">预计开始时间</span>
+                <span class="meta-value">{{ formatDateTime(task.expectedStartTime) }}</span>
+              </div>
+              <div class="meta-item">
                 <span class="meta-label">实际开始时间</span>
                 <span class="meta-value">{{ formatDateTime(task.actualStartTime) }}</span>
               </div>

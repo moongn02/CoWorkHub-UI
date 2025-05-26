@@ -137,9 +137,9 @@
             <div class="form-section">
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="实际开始时间" prop="actualStartTime">
+                  <el-form-item label="预计开始时间" prop="expectedStartTime">
                     <el-date-picker
-                        v-model="taskForm.actualStartTime"
+                        v-model="taskForm.expectedStartTime"
                         type="datetime"
                         value-format="YYYY-MM-DD HH:mm:ss"
                         format="YYYY-MM-DD HH:mm:ss"
@@ -148,13 +148,11 @@
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
-                  <el-form-item label="期望完成时间" prop="expectedTime" required>
-                    <el-date-picker
-                        v-model="taskForm.expectedTime"
-                        type="datetime"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                        format="YYYY-MM-DD HH:mm:ss"
-                        placeholder="请选择"
+                  <el-form-item label="持续天数" prop="duration">
+                    <el-input-number
+                        v-model="taskForm.duration"
+                        :min="1"
+                        placeholder="请选择持续天数"
                     />
                   </el-form-item>
                 </el-col>
@@ -207,8 +205,8 @@ const taskForm = reactive({
   acceptorId: '',
   title: '',
   content: '',
-  actualStartTime: '',
-  expectedTime: ''
+  expectedStartTime: '',
+  duration: ''
 })
 
 // 下拉选项数据
@@ -269,8 +267,11 @@ const rules = reactive<FormRules>({
   content: [
     { required: true, message: '请输入任务内容', trigger: 'blur' }
   ],
-  expectedTime: [
-    { required: true, message: '请选择期望完成时间', trigger: 'change' }
+  expectedStartTime: [
+      { required: true, message: '请选择预计开始时间', trigger: 'change' }
+  ],
+  duration: [
+      { required: true, message: '请选择持续天数', trigger: 'blur' }
   ]
 })
 
