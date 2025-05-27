@@ -5,9 +5,11 @@
         <!-- Header Card -->
         <el-card class="split-task-card header-card" shadow="hover">
           <div class="header-section">
-            <h2 class="page-title">拆分子任务</h2>
+            <h2 class="page-title" style="align-self: center">拆分子任务</h2>
             <div class="task-info">
-              <div class="task-title">{{ parentTask.title }}</div>
+              <div class="task-title">任务标题: {{ parentTask.title }}</div>
+              <div class="task-content">预计开始时间: {{ formatDateTime(parentTask.expectedStartTime) }}</div>
+              <div class="task-content">期望完成时间: {{ formatDateTime(parentTask.expectedTime) }}</div>
               <div class="task-id">任务编号: {{ parentTask.id }}</div>
             </div>
           </div>
@@ -68,6 +70,7 @@
                       clearable
                       filterable
                       style="width: 21.5%"
+                      @change="(val) => handleHandlerChange(val, index)"
                   >
                     <el-option
                         v-for="user in userOptions"
@@ -85,17 +88,45 @@
                         contentType="html"
                         theme="snow"
                         toolbar="full"
+                        placeholder="未填写默认使用父任务内容填充"
                     />
                   </div>
                 </el-form-item>
-                <el-form-item label="期望完成时间">
+                <el-form-item label="前置任务">
+                  <el-select
+                      v-model="subtask.predecessorTask"
+                      multiple
+                      :multiple-limit="2"
+                      placeholder="请选择前置任务（最多2个）"
+                      style="width: 30%"
+                      :disabled="subtasks.length <= 1"
+                  >
+                    <el-option
+                        v-for="(item, idx) in subtasks"
+                        :key="idx"
+                        :label="`子任务${idx+1}`"
+                        :value="idx"
+                        v-if="idx !== index"
+                    />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="预计开始时间">
                   <el-date-picker
-                      v-model="subtask.expectedTime"
+                      v-model="subtask.expectedStartTime"
                       type="datetime"
-                      placeholder="选择日期时间"
+                      placeholder="请选择预计开始时间"
                       format="YYYY-MM-DD HH:mm:ss"
                       value-format="YYYY-MM-DD HH:mm:ss"
+                      style="width: 30%"
                   ></el-date-picker>
+                </el-form-item>
+                <el-form-item label="持续天数">
+                  <el-input-number
+                      v-model="subtask.duration"
+                      :min="1"
+                      placeholder="请输入持续天数"
+                      style="width: 30%"
+                  />
                 </el-form-item>
               </el-form>
 
@@ -107,6 +138,7 @@
         <!-- Action Buttons -->
         <div class="action-buttons">
           <el-button @click="cancel">取消</el-button>
+          <el-button type="warning" @click="addSubtask">添加子任务</el-button>
           <el-button type="primary" @click="submitSplit" :loading="submitting">确认拆分</el-button>
         </div>
       </div>
@@ -117,7 +149,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import {dayjs, ElMessage} from 'element-plus'
 import Layout from '@/components/Layout.vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -169,6 +201,18 @@ const fetchUsers = async () => {
   }
 }
 
+// 处理部门选择
+const handleHandlerChange = (handlerId, index) => {
+  if (!handlerId) return
+
+  // 根据执行人ID查找对应的用户信息
+  const selectedUser = userOptions.value.find(user => user.id === handlerId)
+  if (selectedUser && selectedUser.deptId) {
+    // 自动设置子任务的部门为执行人所在部门
+    subtasks.value[index].departmentId = selectedUser.deptId
+  }
+}
+
 // 初始化数据
 onMounted(async () => {
   await Promise.all([
@@ -185,7 +229,11 @@ const addSubtask = () => {
     departmentId: parentTask.value.departmentId,
     handlerId: null,
     expectedTime: '',
-    content: ''
+    content: '',
+    predecessorTask: [],
+    postTask: [],
+    expectedStartTime: parentTask.value.expectedStartTime,
+    duration: 1
   })
 }
 
@@ -203,14 +251,22 @@ const resetSubtasks = () => {
       departmentId: parentTask.value.departmentId,
       handlerId: null,
       expectedTime: parentTask.value.expectedTime,
-      content: ''
+      content: '',
+      predecessorTask: [],
+      postTask: [],
+      expectedStartTime: parentTask.value.expectedStartTime,
+      duration: 1
     },
     {
       title: `${parentTask.value.title}-子任务`,
       departmentId: parentTask.value.departmentId,
       handlerId: null,
       expectedTime: parentTask.value.expectedTime,
-      content: ''
+      content: '',
+      predecessorTask: [],
+      postTask: [],
+      expectedStartTime: parentTask.value.expectedStartTime,
+      duration: 1
     }
   ]
 }
@@ -222,7 +278,7 @@ const cancel = () => {
 
 // 提交拆分
 const submitSplit = async () => {
-  // 验证子任务数据
+  // 1. 校验子任务数据
   for (let i = 0; i < subtasks.value.length; i++) {
     const subtask = subtasks.value[i]
     if (!subtask.title) {
@@ -240,24 +296,130 @@ const submitSplit = async () => {
       return
     }
 
-    if (!subtask.expectedTime) {
-      ElMessage.warning(`子任务 ${i + 1} 的期望完成时间不能为空`)
+    if (!subtask.expectedStartTime) {
+      ElMessage.warning(`子任务 ${i + 1} 的预计开始时间不能为空`)
       return
     }
 
-    if (subtask.expectedTime && subtask.expectedTime.includes('T')) {
-      subtask.expectedTime = subtask.expectedTime.replace('T', ' ')
+    if (dayjs(subtask.expectedStartTime).isBefore(dayjs(parentTask.value.expectedStartTime))) {
+      ElMessage.error(`子任务 ${i + 1} 的预计开始时间不能早于父任务的预计开始时间`)
+      return
+    }
+
+    if (!subtask.duration || subtask.duration < 1) {
+      ElMessage.warning(`子任务 ${i + 1} 的持续天数必须大于0`)
+      return
+    }
+
+    if (subtask.expectedStartTime && subtask.expectedStartTime.includes('T')) {
+      subtask.expectedStartTime = subtask.expectedStartTime.replace('T', ' ')
     }
   }
 
+  // 2. 计算每个子任务的期望完成时间
+  subtasks.value.forEach(subtask => {
+    subtask.expectedTime = dayjs(subtask.expectedStartTime).add(subtask.duration, 'day').format('YYYY-MM-DD HH:mm:ss')
+  })
+
+  // 3. 校验所有子任务的期望完成时间不能晚于父任务的期望完成时间
+  for (let i = 0; i < subtasks.value.length; i++) {
+    const subtask = subtasks.value[i]
+    if (dayjs(subtask.expectedTime).isAfter(dayjs(parentTask.value.expectedTime))) {
+      ElMessage.error(`子任务 ${i + 1} 的期望完成时间不能晚于父任务的期望完成时间`)
+      return
+    }
+  }
+
+  // 4. 校验前置任务不能比当前子任务的期望完成时间更晚，子任务的预计开始时间不能早于前置任务的期望完成时间
+  for (let i = 0; i < subtasks.value.length; i++) {
+    const subtask = subtasks.value[i]
+    for (const preIdx of subtask.predecessorTask) {
+      const preTask = subtasks.value[preIdx]
+      // 校验前置任务的期望完成时间不能晚于当前子任务的期望完成时间
+      if (dayjs(preTask.expectedTime).isAfter(dayjs(subtask.expectedTime))) {
+        ElMessage.error(`子任务${i + 1}的前置任务的期望完成时间不能晚于当前子任务的期望完成时间，请重新填写`)
+        return
+      }
+      // 校验子任务的预计开始时间不能早于前置任务的期望完成时间
+      if (dayjs(subtask.expectedStartTime).isBefore(dayjs(preTask.expectedTime))) {
+        ElMessage.error(`子任务${i + 1}的预计开始时间不能早于前置任务的期望完成时间`)
+        return
+      }
+    }
+  }
+
+  // 5. 检查前置后置关系不能循环依赖
+  // 构建有向图，检测环
+  const graph = Array(subtasks.value.length).fill(0).map(() => [])
+  subtasks.value.forEach((subtask, idx) => {
+    subtask.predecessorTask.forEach(preIdx => {
+      graph[preIdx].push(idx)
+    })
+  })
+  // 拓扑排序检测环
+  const visited = Array(subtasks.value.length).fill(0)
+  let hasCycle = false
+  function dfs(node) {
+    if (visited[node] === 1) { hasCycle = true; return }
+    if (visited[node] === 2) return
+    visited[node] = 1
+    for (const next of graph[node]) dfs(next)
+    visited[node] = 2
+  }
+  for (let i = 0; i < subtasks.value.length; i++) {
+    if (!visited[i]) dfs(i)
+    if (hasCycle) break
+  }
+  if (hasCycle) {
+    ElMessage.error('子任务前置后置关系存在循环依赖，请重新填写')
+    return
+  }
+
+  // 6. 生成后置任务 postTask 字段
+  subtasks.value.forEach((subtask, idx) => { subtask.postTask = [] })
+  subtasks.value.forEach((subtask, idx) => {
+    subtask.predecessorTask.forEach(preIdx => {
+      subtasks.value[preIdx].postTask.push(idx)
+    })
+  })
+
+  // 7. 提交数据，前置/后置任务使用索引值，由后端处理ID映射
+  const submitData = subtasks.value.map((subtask, idx) => ({
+    ...subtask,
+    predecessorTask: subtask.predecessorTask.join(','),
+    postTask: subtask.postTask.join(','),
+    expectedTime: subtask.expectedTime,
+    expectedStartTime: dayjs(subtask.expectedStartTime).format('YYYY-MM-DD HH:mm:ss')
+  }))
+
   submitting.value = true
-  const result = await taskStore.splitTaskAction(taskId, subtasks.value)
+  const result = await taskStore.splitTaskAction(taskId, submitData)
   if (result) {
     await router.push(`/task/${taskId}`)
   } else {
     ElMessage.error('任务拆分失败')
   }
   submitting.value = false
+}
+
+// 格式化日期时间
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return '-'
+
+  // 尝试格式化日期
+  try {
+    const date = new Date(dateTimeStr)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch (e) {
+    return dateTimeStr
+  }
 }
 </script>
 
@@ -302,6 +464,12 @@ const submitSplit = async () => {
 .task-title {
   font-size: 16px;
   font-weight: 500;
+  color: #606266;
+}
+
+.task-content {
+  font-size: 16px;
+  font-weight: 380;
   color: #606266;
 }
 
