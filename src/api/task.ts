@@ -55,11 +55,11 @@ export function transferTask(id: string, data: any) {
 }
 
 // 修改期望完成时间
-export function updateExpectedTime(id: string, data: any) {
+export function updateExpectedTime(id: string, params: any) {
     return request({
         url: `/api/task/expected_time/${id}`,
         method: 'put',
-        data
+        data: params
     });
 }
 
@@ -100,6 +100,22 @@ export const getParentTask = (taskId: string) => {
 export const getSubTasks = (taskId: string) => {
     return request({
         url: `/api/task/sub_tasks/${taskId}`,
+        method: 'get'
+    })
+}
+
+// 获取前置任务
+export function getPreTasks(taskId: string) {
+    return request({
+        url: `/api/task/pre_tasks/${taskId}`,
+        method: 'get'
+    })
+}
+
+// 获取后置任务
+export function getPostTasks(taskId: string) {
+    return request({
+        url: `/api/task/post_tasks/${taskId}`,
         method: 'get'
     })
 }

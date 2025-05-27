@@ -13,6 +13,8 @@ import {createTask,
     splitTask,
     getParentTask,
     getSubTasks,
+    getPreTasks,
+    getPostTasks,
     getTaskActivities,
     getCurrentUserTasks,
     getUnfinishedTasksCount
@@ -126,10 +128,34 @@ export const useTaskStore = defineStore('task', () => {
         }
     };
 
+    // 获取前置任务
+    const getPreTasksAction = async (id: string) => {
+        const res = await getPreTasks(id);
+        const { success, data, message } = res.data;
+        if (success) {
+            return data;
+        } else {
+            ElMessage.error(message || '获取前置任务失败');
+            return null;
+        }
+    }
+
+    // 获取后置任务
+    const getPostTasksAction = async (id: string) => {
+        const res = await getPostTasks(id);
+        const { success, data, message } = res.data;
+        if (success) {
+            return data;
+        } else {
+            ElMessage.error(message || '获取后置任务失败');
+            return null;
+        }
+    }
+
     // 修改期望完成时间
-    const updateExpectedTimeAction = async (id: string, expectedTime: string, comment: string, workHours: number = 0) => {
+    const updateExpectedTimeAction = async (id: string, expectedStartTime: string, duration: number, comment: string, workHours: number = 0) => {
         loading.value = true;
-        const res = await updateExpectedTime(id, { expectedTime, comment, workHours });
+        const res = await updateExpectedTime(id, { expectedStartTime, duration, comment, workHours });
         loading.value = false;
 
         const { success, message } = res.data;
@@ -320,6 +346,8 @@ export const useTaskStore = defineStore('task', () => {
         splitTaskAction,
         getParentTaskAction,
         getSubTasksAction,
+        getPreTasksAction,
+        getPostTasksAction,
         getTaskActivitiesAction,
         getCurrentUserTasksAction,
         getUnfinishedTasksCountAction

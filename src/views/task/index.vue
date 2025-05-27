@@ -303,13 +303,22 @@
       <!-- 修改期望完成时间对话框 -->
       <el-dialog v-model="expectedTimeDialogVisible" title="修改期望完成时间" width="600px" destroy-on-close>
         <el-form :model="expectedTimeForm" label-width="120px">
-          <el-form-item label="期望完成时间" prop="expectedTime">
+          <el-form-item label="预计开始时间" prop="expectedStartTime">
             <el-date-picker
-                v-model="expectedTimeForm.expectedTime"
+                v-model="expectedTimeForm.expectedStartTime"
                 type="datetime"
                 placeholder="选择日期时间"
                 format="YYYY-MM-DD HH:mm:ss"
                 value-format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+            />
+          </el-form-item>
+          <el-form-item label="持续天数" prop="duration">
+            <el-input-number
+                v-model="expectedTimeForm.duration"
+                :min="1"
+                :precision="0"
+                :step="1"
                 style="width: 100%"
             />
           </el-form-item>
@@ -365,7 +374,7 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
-import {ElMessage, ElMessageBox} from 'element-plus'
+import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
 import { useTaskStore } from '@/stores/task'
 import { useUserStore } from '@/stores/user';
 import { QuillEditor } from '@vueup/vue-quill'
@@ -420,7 +429,8 @@ const transferForm = reactive({
 });
 
 const expectedTimeForm = reactive({
-  expectedTime: '',
+  expectedStartTime: '',
+  duration: 1,
   comment: '',
   workHours: 0
 });
@@ -707,7 +717,8 @@ const resetTransferForm = () => {
 
 // 修改期望完成时间
 const handleModifyExpectedTime = () => {
-  expectedTimeForm.expectedTime = task.value.expectedTime;
+  expectedTimeForm.expectedStartTime = task.value.expectedStartTime;
+  expectedTimeForm.duration = task.value.duration;
   expectedTimeForm.comment = '';
   expectedTimeForm.workHours = 0;
   expectedTimeDialogVisible.value = true;
@@ -715,8 +726,13 @@ const handleModifyExpectedTime = () => {
 
 // 确认修改期望完成时间
 const confirmModifyExpectedTime = async () => {
-  if (!expectedTimeForm.expectedTime) {
-    ElMessage.warning('请选择期望完成时间');
+  if (!expectedTimeForm.expectedStartTime) {
+    ElMessage.warning('请选择预计开始时间');
+    return;
+  }
+
+  if (!expectedTimeForm.duration || expectedTimeForm.duration < 1) {
+    ElMessage.warning('持续天数必须大于0');
     return;
   }
 
@@ -725,11 +741,66 @@ const confirmModifyExpectedTime = async () => {
     return;
   }
 
+  // 计算期望完成时间
+  const expectedTime = dayjs(expectedTimeForm.expectedStartTime).add(expectedTimeForm.duration, 'day').format('YYYY-MM-DD HH:mm:ss');
+
+  // 校验时间条件
+  if (parentTask.value) {
+    // 校验子任务的预计开始时间不能早于父任务的预计开始时间
+    if (dayjs(expectedTimeForm.expectedStartTime).isBefore(dayjs(parentTask.value.expectedStartTime))) {
+      ElMessage.error('子任务的预计开始时间不能早于父任务的预计开始时间');
+      return;
+    }
+
+    // 校验子任务的期望完成时间不能晚于父任务的期望完成时间
+    if (dayjs(expectedTime).isAfter(dayjs(parentTask.value.expectedTime))) {
+      ElMessage.error('子任务的期望完成时间不能晚于父任务的期望完成时间');
+      return;
+    }
+  }
+
+  // 获取前置任务
+  const preTasks = await taskStore.getPreTasksAction(taskId.value);
+  if (preTasks && preTasks.length > 0) {
+    for (const preTask of preTasks) {
+      // 校验子任务的预计开始时间不能早于其前置任务的期望完成时间
+      if (dayjs(expectedTimeForm.expectedStartTime).isBefore(dayjs(preTask.expectedTime))) {
+        ElMessage.error(`子任务的预计开始时间不能早于前置任务的期望完成时间`);
+        return;
+      }
+
+      // 校验前置任务的期望完成时间不能晚于当前子任务的期望完成时间
+      if (dayjs(preTask.expectedTime).isAfter(dayjs(expectedTime))) {
+        ElMessage.error(`当前任务的期望完成时间不能早于前置任务的期望完成时间`);
+        return;
+      }
+    }
+  }
+
+  // 获取后置任务
+  const postTasks = await taskStore.getPostTasksAction(taskId.value);
+  if (postTasks && postTasks.length > 0) {
+    for (const postTask of postTasks) {
+      // 校验后置任务的预计开始时间不能早于当前任务的期望完成时间
+      if (dayjs(postTask.expectedStartTime).isBefore(dayjs(expectedTime))) {
+        ElMessage.error(`当前任务的期望完成时间不能晚于后置任务的预计开始时间`);
+        return;
+      }
+
+      // 校验当前任务的期望完成时间不能晚于后置任务的期望完成时间
+      if (dayjs(expectedTime).isAfter(dayjs(postTask.expectedTime))) {
+        ElMessage.error(`当前任务的期望完成时间不能晚于后置任务的期望完成时间`);
+        return;
+      }
+    }
+  }
+
   submitting.value = true;
   try {
     const success = await taskStore.updateExpectedTimeAction(
         taskId.value,
-        formatDateTime(expectedTimeForm.expectedTime),
+        dayjs(expectedTimeForm.expectedStartTime).format('YYYY-MM-DD HH:mm:ss'),
+        expectedTimeForm.duration,
         expectedTimeForm.comment,
         expectedTimeForm.workHours
     );
