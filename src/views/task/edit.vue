@@ -134,34 +134,6 @@
               </el-form-item>
             </div>
 
-            <!-- 时间和可见性 -->
-            <div class="form-section">
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="实际开始时间" prop="actualStartTime">
-                    <el-date-picker
-                        v-model="taskForm.actualStartTime"
-                        type="datetime"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                        format="YYYY-MM-DD HH:mm:ss"
-                        placeholder="请选择"
-                    />
-                  </el-form-item>
-                </el-col>
-                <el-col :span="12">
-                  <el-form-item label="期望完成时间" prop="expectedTime" required>
-                    <el-date-picker
-                        v-model="taskForm.expectedTime"
-                        type="datetime"
-                        value-format="YYYY-MM-DD HH:mm:ss"
-                        format="YYYY-MM-DD HH:mm:ss"
-                        placeholder="请选择"
-                    />
-                  </el-form-item>
-                </el-col>
-              </el-row>
-            </div>
-
             <!-- 按钮组 -->
             <div class="button-container">
               <el-button @click="goBack">取消</el-button>
@@ -216,8 +188,6 @@ const taskForm = reactive({
   acceptorId: '',
   title: '',
   content: '',
-  actualStartTime: '',
-  expectedTime: '',
   status: ''
 })
 
@@ -257,39 +227,20 @@ const getTaskDetail = async () => {
       taskForm.id = taskData.id
       taskForm.departmentId = taskData.departmentId
       taskForm.projectId = taskData.projectId
-      taskForm.priority = String(taskData.priority) // 转换为字符串以匹配select
+      taskForm.priority = String(taskData.priority)
       taskForm.handlerId = taskData.handlerId
       taskForm.acceptorId = taskData.acceptorId
       taskForm.title = taskData.title
       taskForm.content = taskData.content
       taskForm.status = taskData.status
-
-      // 处理日期格式
-      if (taskData.actualStartTime) {
-        // 确保日期格式正确
-        if (typeof taskData.actualStartTime === 'string' && taskData.actualStartTime.includes('T')) {
-          taskForm.actualStartTime = taskData.actualStartTime.replace('T', ' ')
-        } else {
-          taskForm.actualStartTime = taskData.actualStartTime
-        }
-      }
-
-      if (taskData.expectedTime) {
-        // 确保日期格式正确
-        if (typeof taskData.expectedTime === 'string' && taskData.expectedTime.includes('T')) {
-          taskForm.expectedTime = taskData.expectedTime.replace('T', ' ')
-        } else {
-          taskForm.expectedTime = taskData.expectedTime
-        }
-      }
     } else {
       ElMessage.error('获取任务详情失败')
-      router.push('/task/list')
+      router.push('/')
     }
   } catch (error) {
     console.error('获取任务详情失败:', error)
     ElMessage.error('获取任务详情失败')
-    router.push('/task/list')
+    router.push('/')
   } finally {
     loading.value = false
   }
@@ -333,9 +284,6 @@ const rules = reactive<FormRules>({
   ],
   content: [
     { required: true, message: '请输入任务内容', trigger: 'blur' }
-  ],
-  expectedTime: [
-    { required: true, message: '请选择期望完成时间', trigger: 'change' }
   ]
 })
 
@@ -356,14 +304,6 @@ const submitForm = async () => {
           acceptorId: taskForm.acceptorId ? parseInt(taskForm.acceptorId) : null,
           departmentId: parseInt(taskForm.departmentId),
           projectId: parseInt(taskForm.projectId),
-        }
-
-        if (taskData.expectedTime && taskData.expectedTime.includes('T')) {
-          taskData.expectedTime = taskData.expectedTime.replace('T', ' ')
-        }
-
-        if (taskData.actualStartTime && taskData.actualStartTime.includes('T')) {
-          taskData.actualStartTime = taskData.actualStartTime.replace('T', ' ')
         }
 
         // 调用API更新任务
