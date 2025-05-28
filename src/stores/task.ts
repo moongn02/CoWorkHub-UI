@@ -15,6 +15,7 @@ import {createTask,
     getSubTasks,
     getPreTasks,
     getPostTasks,
+    getBrotherTasks,
     getTaskActivities,
     getCurrentUserTasks,
     getUnfinishedTasksCount
@@ -240,7 +241,6 @@ export const useTaskStore = defineStore('task', () => {
 
         const { success, data, message } = res.data;
         if (success) {
-            taskComments.value = data;
             return data;
         } else {
             ElMessage.error(message || '获取父任务失败');
@@ -256,7 +256,21 @@ export const useTaskStore = defineStore('task', () => {
 
         const { success, data, message } = res.data;
         if (success) {
-            taskComments.value = data;
+            return data;
+        } else {
+            ElMessage.error(message || '获取子任务失败');
+            return [];
+        }
+    }
+
+// 获取兄弟任务
+    const getBrotherTasksAction = async (taskId: string) => {
+        loading.value = true
+        const res = await getBrotherTasks(taskId)
+        loading.value = false
+
+        const { success, data, message } = res.data;
+        if (success) {
             return data;
         } else {
             ElMessage.error(message || '获取子任务失败');
@@ -348,6 +362,7 @@ export const useTaskStore = defineStore('task', () => {
         getSubTasksAction,
         getPreTasksAction,
         getPostTasksAction,
+        getBrotherTasksAction,
         getTaskActivitiesAction,
         getCurrentUserTasksAction,
         getUnfinishedTasksCountAction

@@ -207,6 +207,42 @@
                   </div>
                 </div>
               </el-tab-pane>
+              <el-tab-pane label="兄弟任务">
+                <div class="tab-content-container">
+                  <div class="subtasks-section">
+                    <div class="scrollable-content subtasks-content">
+                      <div v-if="brotherTasks.length > 0">
+                        <div v-for="brotherTask in brotherTasks" :key="brotherTask.id" class="related-item" @click="viewSubTask(brotherTask.id)">
+                          <div class="related-item-header">
+                            <el-tag size="small" type="primary">{{ brotherTask.id }}</el-tag>
+                            <div class="status-priority-line">
+                              <div class="status-item">
+                                <el-tag size="small" :type="getStatusType(brotherTask.status)">
+                                  {{ brotherTask.statusText }}
+                                </el-tag>
+                              </div>
+                              <div class="divider">/</div>
+                              <div class="status-item">
+                                <el-tag size="small" :type="getRelationType(brotherTask.relationType)">
+                                  {{ getRelationText(brotherTask.relationType) }}
+                                </el-tag>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="related-item-content">
+                            <h4>{{ brotherTask.title }}</h4>
+                            <p class="related-item-info">
+                              <span>执行人: {{ brotherTask.handlerName }}</span>
+                              <span>期望完成时间: {{ formatDateTime(brotherTask.expectedTime) }}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <el-empty v-else description="暂无兄弟任务" :image-size="60" />
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
               <el-tab-pane label="关联问题">
                 <div class="tab-content-container">
                   <div class="issues-section">
@@ -398,6 +434,7 @@ const taskActivities = ref([])
 const subTasks = ref([])
 const relatedIssues = ref([])
 const parentTask = ref(null)
+const brotherTasks = ref([])
 
 // 下拉选项
 const userOptions = ref([])
@@ -461,6 +498,7 @@ const reloadTaskData = async () => {
       fetchTaskComments(),
       fetchParentTask(),
       fetchSubTasks(),
+      fetchBrotherTasks(),
       fetchRelatedIssues(),
       fetchTaskActivities()
     ])
@@ -478,6 +516,7 @@ onMounted(async () => {
     fetchTaskComments(),
     fetchParentTask(),
     fetchSubTasks(),
+    fetchBrotherTasks(),
     fetchRelatedIssues(),
     fetchTaskActivities()
   ]);
@@ -532,6 +571,20 @@ const fetchSubTasks = async () => {
     subTasks.value = subTasksData
   } else {
     subTasks.value = []
+  }
+}
+
+// 获取兄弟任务
+const fetchBrotherTasks = async () => {
+  try {
+    const tasks = await taskStore.getBrotherTasksAction(taskId.value)
+    if (tasks) {
+      brotherTasks.value = tasks
+    } else {
+      brotherTasks.value = []
+    }
+  } catch (error) {
+    brotherTasks.value = []
   }
 }
 
@@ -951,6 +1004,26 @@ const formatDateTime = (dateTimeStr) => {
   } catch (e) {
     return dateTimeStr
   }
+}
+
+// 获取关系类型样式
+const getRelationType = (type: string) => {
+  const typeMap = {
+    'predecessor': 'warning',
+    'post': 'success',
+    'brother': 'primary'
+  }
+  return typeMap[type] || 'info'
+}
+
+// 获取关系类型文本
+const getRelationText = (type: string) => {
+  const textMap = {
+    'predecessor': '前置任务',
+    'post': '后置任务',
+    'brother': '兄弟任务'
+  }
+  return textMap[type] || '未知任务'
 }
 
 // 获取状态类型

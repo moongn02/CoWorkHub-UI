@@ -120,6 +120,14 @@ export function getPostTasks(taskId: string) {
     })
 }
 
+// 获取兄弟任务
+export function getBrotherTasks(taskId: string) {
+    return request({
+        url: `/api/task/brother_tasks/${taskId}`,
+        method: 'get'
+    })
+}
+
 // 获取当前用户的任务列表
 export const getCurrentUserTasks = () => {
     return request({
