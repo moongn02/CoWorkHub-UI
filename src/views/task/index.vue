@@ -97,6 +97,7 @@
               <el-button type="primary" @click="handleTransferTask">转派任务</el-button>
               <el-button type="danger" @click="handleModifyExpectedTime">修改期望时间</el-button>
               <el-button type="success" @click="handleAddRemarks">备注</el-button>
+              <el-button v-if="subTasks.length > 0" type="warning" @click="handleViewSubtaskStatus">查看子任务情况</el-button>
             </div>
           </el-card>
         </div>
@@ -274,6 +275,7 @@
         </div>
       </div>
 
+      <!-- 变更任务状态对话框 -->
       <el-dialog v-model="statusDialogVisible" title="变更任务状态" width="600px" destroy-on-close>
         <el-form :model="statusForm" label-width="100px">
           <el-form-item label="状态" prop="status">
@@ -402,6 +404,42 @@
       </span>
         </template>
       </el-dialog>
+
+      <!-- 查看子任务情况对话框 -->
+      <el-dialog v-model="subtaskStatusDialogVisible" title="子任务执行情况" width="800px" destroy-on-close>
+        <template #title>
+          <div class="dialog-title-with-tooltip">
+            <span>子任务执行情况</span>
+            <el-tooltip content="逾期未完成的任务会在列表中标红" placement="top">
+              <el-icon color="#A9A9A9"><InfoFilled /></el-icon>
+            </el-tooltip>
+          </div>
+        </template>
+        <div class="subtask-table-container">
+          <el-table :data="sortedSubtasks" style="width: 100%">
+            <el-table-column prop="id" label="任务编号" width="80" align="center"></el-table-column>
+            <el-table-column prop="title" label="任务标题" align="center"></el-table-column>
+            <el-table-column label="预计开始时间" width="170" align="center">
+              <template #default="{ row }">
+                {{ formatDateTime(row.expectedStartTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="期望完成时间" width="170" align="center">
+              <template #default="{ row }">
+                <span :style="{ color: row.isOverdue && row.status !== 3 ? 'red' : '' }">
+                  {{ formatDateTime(row.expectedTime) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="duration" label="持续天数" width="80" align="center"></el-table-column>
+            <el-table-column label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="getStatusType(row.status)">{{ row.statusText }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </el-dialog>
     </template>
   </Layout>
 </template>
@@ -410,11 +448,12 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Layout from '@/components/Layout.vue'
-import {dayjs, ElMessage, ElMessageBox} from 'element-plus'
+import {dayjs, ElMessage, ElMessageBox, ElTooltip} from 'element-plus'
 import { useTaskStore } from '@/stores/task'
 import { useUserStore } from '@/stores/user';
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
+import { InfoFilled } from '@element-plus/icons-vue';
 
 // 获取路由参数
 const route = useRoute()
@@ -435,6 +474,7 @@ const subTasks = ref([])
 const relatedIssues = ref([])
 const parentTask = ref(null)
 const brotherTasks = ref([])
+const sortedSubtasks = ref([]);
 
 // 下拉选项
 const userOptions = ref([])
@@ -451,6 +491,7 @@ const statusDialogVisible = ref(false);
 const transferDialogVisible = ref(false);
 const expectedTimeDialogVisible = ref(false);
 const remarksDialogVisible = ref(false);
+const subtaskStatusDialogVisible = ref(false);
 
 // 表单数据
 const statusForm = reactive({
@@ -937,6 +978,32 @@ const resetRemarksForm = () => {
   remarksForm.workHours = 0;
 };
 
+const isSubtaskOverdue = (subtask) => {
+  // 状态 3 代表已完成，如果不是已完成，并且当前时间晚于期望完成时间，则视为超期未完成
+  return subtask.status !== 3 && dayjs().isAfter(dayjs(subtask.expectedTime));
+};
+
+// 查看子任务情况
+const handleViewSubtaskStatus = () => {
+  // 在打开弹窗前对子任务进行排序（按预计开始时间）
+  sortedSubtasks.value = [...subTasks.value].sort((a, b) => {
+    return dayjs(a.expectedStartTime).valueOf() - dayjs(b.expectedStartTime).valueOf();
+  }).map(subtask => ({
+    ...subtask,
+    isOverdue: isSubtaskOverdue(subtask) // 添加是否超期的标记
+  }));
+  subtaskStatusDialogVisible.value = true;
+};
+
+
+// 监听子任务情况弹窗关闭事件
+watch(subtaskStatusDialogVisible, (newVal) => {
+  if (!newVal) {
+    // 弹窗关闭时清空 sortedSubtasks，以便下次打开时重新计算和排序
+    sortedSubtasks.value = [];
+  }
+});
+
 // 查看关联问题
 const viewIssue = (issueId) => {
   if (issueId === 0) return
@@ -1397,6 +1464,18 @@ const getPriorityType = (priority: number) => {
 .meta-grid::-webkit-scrollbar-thumb {
   background: #909399;
   border-radius: 4px;
+}
+
+.subtask-table-container {
+  min-height: 450px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.dialog-title-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 暗色主题适配 */
