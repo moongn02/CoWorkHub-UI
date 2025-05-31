@@ -439,9 +439,7 @@ const taskStatusOptions = [
 const issueStatusOptions = [
   { label: '已分派', value: 1 },
   { label: '处理中', value: 2 },
-  { label: '已解决', value: 3 },
-  { label: '已暂停', value: 4 },
-  { label: '已关闭', value: 5 }
+  { label: '已解决', value: 3 }
 ]
 
 // 根据对象类型计算状态选项

@@ -397,9 +397,7 @@ const getIssueStatusType = (status) => {
   const typeMap = {
     1: 'info',     // 已分派
     2: 'primary',  // 处理中
-    3: 'success',  // 已解决
-    4: 'warning',  // 已暂停
-    5: 'danger'    // 已关闭
+    3: 'success'   // 已解决
   }
   return typeMap[status] || 'info'
 }

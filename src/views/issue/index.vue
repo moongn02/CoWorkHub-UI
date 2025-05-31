@@ -429,9 +429,7 @@ const userOptions = ref([])
 const statusOptions = [
   { value: 1, label: '待处理' },
   { value: 2, label: '处理中' },
-  { value: 3, label: '已解决' },
-  { value: 4, label: '已暂停' },
-  { value: 5, label: '已关闭' }
+  { value: 3, label: '已解决' }
 ];
 
 // 对话框状态
@@ -855,9 +853,7 @@ const getStatusType = (status) => {
   const typeMap = {
     1: 'info',     // 已分派
     2: 'primary',  // 处理中
-    3: 'success',  // 已解决
-    4: 'warning',  // 已暂停
-    5: 'danger'    // 已关闭
+    3: 'success'   // 已解决
   }
   return typeMap[status] || 'info'
 }

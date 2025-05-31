@@ -18,8 +18,6 @@
                   <el-option label="已分派" value="1" />
                   <el-option label="处理中" value="2" />
                   <el-option label="已解决" value="3" />
-                  <el-option label="已暂停" value="4" />
-                  <el-option label="已关闭" value="5" />
                 </el-select>
               </el-form-item>
               <el-form-item label="创建人">
@@ -395,9 +393,7 @@ const getStatusType = (status) => {
   const typeMap = {
     1: 'info',     // 已分派
     2: 'primary',  // 处理中
-    3: 'success',  // 已解决
-    4: 'warning',  // 已暂停
-    5: 'danger'    // 已关闭
+    3: 'success'   // 已解决
   }
   return typeMap[status] || 'info'
 }
